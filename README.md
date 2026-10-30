@@ -61,7 +61,7 @@ Se silencia con la tecla **M** o con el botón 🔊 (se recuerda la preferencia)
 | Tecla | Acción |
 |---|---|
 | WASD o flechas | Mover |
-| V | Cambiar vista: tercera persona / primera persona |
+| V o botón 👁 | Cambiar vista: tercera persona / **primera persona** (también se elige en el menú; funciona en el juego, la pasarela, la cabina y el despegue) |
 | Shift | Correr (más sospechoso) |
 | Espacio | Saltar (los muros bajos son atajos a la vista) |
 | C | Agacharse (sigilo) |

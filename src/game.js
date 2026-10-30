@@ -935,7 +935,7 @@ const cam = { yaw:0, pitch:.5, dist:9.5, x:0, y:0, z:0, fp:0, view:(() => { try 
 function applyViewFov() { camera.fov = cam.view === 'fp' ? 75 : 62; camera.updateProjectionMatrix(); }
 function toggleView() {
   cam.view = cam.view === 'fp' ? 'tp' : 'fp'; try { localStorage.setItem('simulator.view', cam.view); } catch (e) {}
-  applyViewFov(); if (cam.view === 'tp' && document.exitPointerLock) document.exitPointerLock();
+  applyViewFov(); refreshViewSel(); if (cam.view === 'tp' && document.exitPointerLock) document.exitPointerLock();
   sub(cam.view === 'fp' ? '<b>Vista:</b> primera persona (V para cambiar)' : '<b>Vista:</b> tercera persona (V para cambiar)', 2200);
 }
 applyViewFov();
@@ -1646,7 +1646,7 @@ function updateCamera(dt) {
     const a = G.t * .08; camera.position.set(Math.sin(a) * 50, 22, 10 + Math.cos(a) * 50); camera.lookAt(0, 2, -10); return;
   }
   const u = player.userData;
-  const fpOn = cam.view === 'fp' && G.mode !== 'cine' && !(G.cine && G.cine.camOverride);
+  const fpOn = cam.view === 'fp' && !(G.cine && G.cine.camOverride);
   if (G.mode === 'cabin' && cabinCamera(dt, fpOn)) return;
   if (!G.exploded) player.visible = !fpOn && !u.hidden;
   if (fpOn) {
@@ -1776,6 +1776,13 @@ const unlockMusic = () => { if (musicOn) return; musicOn = true; musicStart(); }
 function refreshMute() { const b = $('btnMute'); if (b) b.textContent = music.muted ? '🔇' : '🔊'; }
 function toggleMute() { setMuted(!music.muted); try { localStorage.setItem('simulator.mute', music.muted ? '1' : '0'); } catch (e) {} refreshMute(); }
 $('btnMute').onclick = toggleMute; refreshMute();
+
+/* Selector de vista (menú) y botón 👁 */
+function setView(v) { if (cam.view === v) return; toggleView(); }
+function refreshViewSel() { document.querySelectorAll('#viewSel button').forEach(b => b.classList.toggle('on', b.dataset.v === cam.view)); }
+document.querySelectorAll('#viewSel button').forEach(b => b.onclick = () => { cam.view = b.dataset.v; try { localStorage.setItem('simulator.view', cam.view); } catch (e) {} applyViewFov(); refreshViewSel(); beep(440, .05); });
+$('btnViewIn').onclick = () => { if (G.mode === 'play' || G.mode === 'cabin' || G.mode === 'cine') toggleView(); };
+refreshViewSel();
 addEventListener('keydown', e => { if (e.code === 'KeyM' && !e.repeat && !$('admin').classList.contains('on')) toggleMute(); });
 
 let adrHold = 0;
@@ -2008,7 +2015,7 @@ function cabinCamera(dt, fpOn) {
     if (!c.cp) { c.cp = camera.position.clone(); c.cl = new THREE.Vector3(u.px, 1.2, u.pz); }
     const k = Math.min(1, dt * c.cam.k); c.cp.lerp(c.cam.p, k); c.cl.lerp(c.cam.l, k);
     let sx = 0, sy = 0; if (c.shake > 0) { sx = (Math.random() - .5) * c.shake * .05; sy = (Math.random() - .5) * c.shake * .05; }
-    camera.position.set(c.cp.x + sx, c.cp.y + sy, c.cp.z); camera.lookAt(c.cl); player.visible = true; return true;
+    camera.position.set(c.cp.x + sx, c.cp.y + sy, c.cp.z); camera.lookAt(c.cl); player.visible = cam.view !== 'fp'; return true;
   }
   if (fpOn) { player.visible = false; return false; }
   cam.yaw = 0; player.visible = true;
@@ -2089,7 +2096,7 @@ async function victory() {
   await blackout('✈ PUERTA 27', async () => {
     if (u.hidden) unhidePlayer();
     u.px = 0; u.pz = -58.8; u.vx = u.vz = 0; u.ang = Math.PI; u.y = 0; u.crouch = false; player.visible = true; player.scale.y = 1;
-    cam.yaw = 0; cam.pitch = .12; cam.dist = 4.6; cam.x = u.px; cam.y = 2.15; cam.z = u.pz + 4.57;
+    cam.yaw = 0; cam.fp = 0; cam.pitch = .12; cam.dist = 4.6; cam.x = u.px; cam.y = 2.15; cam.z = u.pz + 4.57;
     spawnBoarders();
   });
   chapter('ABORDANDO', 'Puerta 27 · Vuelo a Ámsterdam');
@@ -2123,14 +2130,15 @@ async function takeoffSequence() {
   await walkTo(seatX, seatZ, 1.9); u.ang = 0; c.seated = true;
   beep(1700, .04, 'square', .05); setTimeout(() => beep(1300, .05, 'square', .05), 160);
   document.body.classList.add('bars'); c.skippable = true; c.phase = 'takeoff'; showSkip(true);
-  shot(CAB.x + .25, 1.55, seatZ + 2.1, seatX, 1.0, seatZ, 2.5);
+  const fpv = cam.view === 'fp';
+  if (fpv) shot(seatX, 1.38, seatZ + .05, seatX, 1.36, seatZ + 3, 2.5); else shot(CAB.x + .25, 1.55, seatZ + 2.1, seatX, 1.0, seatZ, 2.5);
   chapter('ASIENTO 34C', 'Cinturón abrochado');
   sub('<b>Tu estómago:</b> "Gluuurp." <i>(Calma, pequeñas. Ya casi.)</i>', 3600);
   await cineWait(2600);
   c.mood = 'epic'; music.intensity = .15; stinger('ding');
   sub('<b>Capitán:</b> "Señores pasajeros, bienvenidos al vuelo 027 con destino Ámsterdam. Tripulación, preparados para el despegue."', 5200);
   await cineWait(3400);
-  shot(CAB.x - 1.45, 1.42, seatZ + .05, CAB.x - 2.5, 1.38, seatZ - .02, 1.6);
+  if (fpv) shot(seatX, 1.38, seatZ + .05, CAB.x - 2.5, 1.36, seatZ - .05, 1.6); else shot(CAB.x - 1.45, 1.42, seatZ + .05, CAB.x - 2.5, 1.38, seatZ - .02, 1.6);
   roar(8, .55); c.vTarget = .25; music.intensity = .35;
   sub('<i>Los motores rugen. La pista empieza a correr bajo la ventanilla...</i>', 3200);
   await cineWait(1700); c.vTarget = 1.5; c.shake = 1.2; music.intensity = .6;
@@ -2140,7 +2148,7 @@ async function takeoffSequence() {
   WT.mL.map = WT.sL; WT.mR.map = WT.sR; WT.mL.needsUpdate = WT.mR.needsUpdate = true; c.vTarget = .5; c.shake = 3; music.intensity = 1;
   chapter('¡DESPEGASTE!', 'Rumbo a Ámsterdam'); stinger('clap', 3.4); stinger('ding');
   if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 120]);
-  shot(CAB.x - 1.2, 1.45, seatZ + .35, CAB.x - 2.5, 1.38, seatZ - .02, 1.2);
+  if (fpv) shot(seatX, 1.38, seatZ + .05, CAB.x - 2.5, 1.4, seatZ - .08, 1.2); else shot(CAB.x - 1.2, 1.45, seatZ + .35, CAB.x - 2.5, 1.38, seatZ - .02, 1.2);
   sub('<b>Pasajeros:</b> "¡Bravooo!" <i>(Aplauden. Tú aplaudes también, con las manos temblorosas.)</i>', 4200);
   await cineWait(3600);
   await winScreen();
@@ -2196,7 +2204,7 @@ function adaptQuality(rawDt) {
 }
 function stepSim(dt) {
   if (G.paused) return;
-  if (pressed.KeyV && (G.mode === 'play' || G.mode === 'cabin')) toggleView();
+  if (pressed.KeyV && (G.mode === 'play' || G.mode === 'cabin' || G.mode === 'cine')) toggleView();
   G.t += dt;
   mazeUpdate(dt); itemsUpdate(dt);
   worldUpdate(dt); pickupsUpdate(dt);

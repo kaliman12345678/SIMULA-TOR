@@ -63,7 +63,10 @@
   #bar1 { top:0; } #bar2 { bottom:0; }
   body.bars #bar1, body.bars #bar2 { height:11vh; }
   body.bars #sub { bottom:13vh; }
-  body.cine .hud:not(#sub), body.cabin .hud:not(#sub):not(#prompt):not(#obj), body.cine #vig, body.cabin #vig, body.cine #touch, body.cine #btnAdminIn, body.cine #btnFullIn, body.cabin #btnAdminIn, body.cabin #titems, body.cabin #tbtns .tb:not(#tAct) { display:none !important; }
+  body.cine .hud:not(#sub), body.cabin .hud:not(#sub):not(#prompt):not(#obj), body.cine #vig, body.cabin #vig, body.cine #joy, body.cine #tbtns, body.cine #titems .tb:not([data-k="KeyV"]), body.cine #btnAdminIn, body.cine #btnFullIn, body.cabin #btnAdminIn, body.cabin #titems .tb:not([data-k="KeyV"]), body.cabin #tbtns .tb:not(#tAct) { display:none !important; }
+  #viewSel { display:flex; gap:8px; margin:4px 0 6px; } #viewSel button { padding:6px 14px; font-size:14px; } #viewSel button.on { background:#1f5a3a; border-color:var(--green); }
+  #btnViewIn { position:fixed; left:134px; top:8px; z-index:9; opacity:.5; padding:2px 8px; font-size:16px; background:#0006; }
+  .nohud #btnViewIn, body.touch #btnViewIn, body.over #btnViewIn { display:none; }
   #chapter { position:fixed; left:0; right:0; top:32%; text-align:center; z-index:17; pointer-events:none; opacity:0; font:400 64px Impact, sans-serif; letter-spacing:8px; text-shadow:0 0 22px #000, 0 3px 3px #000; }
   #chapter small { display:block; font:600 18px "Segoe UI", sans-serif; letter-spacing:3px; color:#f5e27a; margin-top:6px; }
   #chapter.show { animation:chap 3.2s ease forwards; }
@@ -241,6 +244,7 @@
 <div id="fade"></div>
 <button id="btnAdminIn" title="Administración (F2)">⚙</button>
 <button id="btnFullIn" title="Pantalla completa">⛶</button>
+<button id="btnViewIn" title="Cambiar vista 1ª/3ª persona (V)">👁</button>
 <div id="touch"></div>
 <div id="rotate"><span>📱↻</span>Gira el móvil en horizontal</div>
 
@@ -249,6 +253,7 @@
   <p>Eres una <b>mula</b>. Antes de que se acabe el tiempo debes abordar, pero tus cápsulas explotan antes. Recoge antiácidos 💊 y relojes ⏱, esquiva policías, perros y escáneres... y no te fíes del laberinto: <b>cambia solo</b> y las puertas se cierran a tu espalda.</p>
   <div id="diffSel"><button data-d="novato">Novato</button><button data-d="dificil">Difícil</button><button data-d="experto">Experto</button></div>
   <div id="diffDesc"></div>
+  <div id="viewSel"><button data-v="tp">🎥 Tercera persona</button><button data-v="fp">👁 Primera persona</button></div>
   <div class="mrow"><button id="btnStart">▶ NUEVA PARTIDA</button></div>
   <div class="mrow"><button id="btnFull">⛶ Pantalla completa</button></div>
   <div id="iosHint">📲 <b>iPhone:</b> para verlo a pantalla completa, pulsa <b>Compartir ▸ Añadir a pantalla de inicio</b> y ábrelo desde ese icono.</div>
