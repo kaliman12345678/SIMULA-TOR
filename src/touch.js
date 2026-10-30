@@ -70,6 +70,21 @@ export function updateTouchUI(S, avail) {
   if (h) h.classList.toggle('avail', !!avail.hide);
 }
 
+export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+export const isStandalone = () => { try { return matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
+export const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement) || isStandalone();
+const canFS = () => { const d = document.documentElement; return !!(d.requestFullscreen || d.webkitRequestFullscreen); };
+/* Devuelve 'on' | 'off' | 'ios' (iPhone: el navegador no lo permite, hay que instalar la app) | 'none' */
+export async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) { await (document.exitFullscreen || document.webkitExitFullscreen).call(document); return 'off'; }
+    if (!canFS()) return isIOS() ? 'ios' : 'none';
+    const d = document.documentElement;
+    await (d.requestFullscreen ? d.requestFullscreen({ navigationUI:'hide' }) : d.webkitRequestFullscreen());
+    try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
+    return 'on';
+  } catch (e) { return isIOS() ? 'ios' : 'none'; }
+}
 export async function goFullscreen() {
   try {
     const d = document.documentElement;

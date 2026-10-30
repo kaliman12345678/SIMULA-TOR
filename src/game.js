@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { P, cfg, applyDifficulty, DIFF_IDS, DIFF_LABEL, DIFF_DESC, openAdmin, onAdminClose, isTouch, qualityTier } from './config.js';
 import { meta, saveMeta, UPGRADES, lvl, buy, addMoney, mulberry32, dailySeed, addRecord, records } from './meta.js';
-import { TOUCH, initInput, updateTouchUI, goFullscreen } from './touch.js';
+import { TOUCH, initInput, updateTouchUI, goFullscreen, toggleFullscreen, inFullscreen, isIOS, isStandalone } from './touch.js';
 
 /* ==========================================================
    UTILIDADES
@@ -961,6 +961,25 @@ $('btnStart').onclick = () => beginRun(false);
 $('btnDaily').onclick = () => beginRun(true);
 $('btnAdmin').onclick = () => toggleAdmin();
 $('btnAdminIn').onclick = () => toggleAdmin();
+
+/* Pantalla completa: botón en el menú y en la partida. En iPhone hay que instalar la app (Safari no deja ocultar su barra). */
+const IOS_STEPS = '<b>Pantalla completa en iPhone:</b><br>1. Pulsa el botón <b>Compartir</b> (cuadrado con flecha) de Safari.<br>2. Elige <b>"Añadir a pantalla de inicio"</b>.<br>3. Abre <b>Simula-tor</b> desde ese icono: se verá sin barra del navegador.';
+async function fullscreenClick() {
+  const r = await toggleFullscreen();
+  if (r === 'ios') {
+    if (G.mode === 'play') sub(IOS_STEPS, 12000);
+    else await dialog({ title:'PANTALLA COMPLETA', text:'<p>' + IOS_STEPS + '</p><p class="dimtxt">Safari en iPhone no permite ocultar su barra desde una página web; instalado así, el juego se abre a pantalla completa y funciona también sin conexión.</p>', opts:[{ label:'Entendido', close:true }] });
+  } else if (r === 'none') sub('Este navegador no permite pantalla completa. Prueba Chrome o instala el juego en la pantalla de inicio.', 5000);
+  refreshFs();
+}
+function refreshFs() {
+  const hide = isStandalone();
+  document.querySelectorAll('#btnFull, #btnFullIn').forEach(b => { b.style.display = hide ? 'none' : ''; b.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? '⤢ Salir de pantalla completa' : '⛶ Pantalla completa'; if (b.id === 'btnFullIn') b.textContent = '⛶'; });
+  $('iosHint').style.display = (isIOS() && !isStandalone()) ? 'block' : 'none';
+}
+$('btnFull').onclick = fullscreenClick; $('btnFullIn').onclick = fullscreenClick;
+document.addEventListener('fullscreenchange', refreshFs); document.addEventListener('webkitfullscreenchange', refreshFs);
+refreshFs();
 
 $('btnShop').onclick = async () => {
   $('title').classList.remove('on');

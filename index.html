@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0b0d10">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Simula-tor">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -14,8 +15,9 @@
 <style>
   :root { --red:#ff3b3b; --amber:#ffb020; --green:#3ddc84; --ar:#37f0ff; --line:#2a323c; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { margin:0; height:100%; overflow:hidden; background:#000; color:#e8edf2; font:15px/1.45 "Segoe UI", system-ui, sans-serif; user-select:none; -webkit-user-select:none; overscroll-behavior:none; touch-action:none; }
+  html, body { margin:0; height:100%; height:100dvh; overflow:hidden; background:#000; color:#e8edf2; font:15px/1.45 "Segoe UI", system-ui, sans-serif; user-select:none; -webkit-user-select:none; overscroll-behavior:none; touch-action:none; }
   #game { position:fixed; inset:0; }
+  @media (pointer:coarse) { #btnFullIn { left:50px; } }
   canvas { display:block; touch-action:none; }
   .nohud .hud, .nohud #vig, .nohud #touch { display:none !important; }
   .hud { position:fixed; pointer-events:none; text-shadow:0 0 4px #000, 0 2px 2px #000; font-family:Impact, "Arial Black", sans-serif; letter-spacing:1px; }
@@ -61,7 +63,10 @@
   #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; display:flex; align-items:center; justify-content:center; font:700 40px Impact, sans-serif; color:#fff; transition:opacity .35s; z-index:15; }
   #fade.on { opacity:1; }
   #btnAdminIn { position:fixed; left:8px; top:8px; z-index:9; opacity:.35; padding:2px 8px; font-size:16px; background:#0006; }
-  .nohud #btnAdminIn { display:none; }
+  .nohud #btnAdminIn, .nohud #btnFullIn { display:none; }
+  #btnFullIn { position:fixed; left:50px; top:8px; z-index:9; opacity:.45; padding:2px 8px; font-size:16px; background:#0006; }
+  #iosHint { display:none; background:#1b2a10cc; border:1px solid #6fb03a; border-radius:8px; padding:6px 12px; font-size:12.5px; color:#d4ecc0; max-width:520px; margin:6px 0; }
+  .dimtxt { color:#8f9baa; font-size:12.5px; }
 
   .overlay { position:fixed; inset:0; display:none; z-index:20; }
   .overlay.on { display:flex; }
@@ -194,6 +199,7 @@
 <div id="flash"></div>
 <div id="fade"></div>
 <button id="btnAdminIn" title="Administración (F2)">⚙</button>
+<button id="btnFullIn" title="Pantalla completa">⛶</button>
 <div id="touch"></div>
 <div id="rotate"><span>📱↻</span>Gira el móvil en horizontal</div>
 
@@ -203,6 +209,8 @@
   <div id="diffSel"><button data-d="novato">Novato</button><button data-d="dificil">Difícil</button><button data-d="experto">Experto</button></div>
   <div id="diffDesc"></div>
   <div class="mrow"><button id="btnStart">▶ NUEVA PARTIDA</button></div>
+  <div class="mrow"><button id="btnFull">⛶ Pantalla completa</button></div>
+  <div id="iosHint">📲 <b>iPhone:</b> para verlo a pantalla completa, pulsa <b>Compartir ▸ Añadir a pantalla de inicio</b> y ábrelo desde ese icono.</div>
   <div class="mrow"><button id="btnDaily">📅 Reto diario</button><button id="btnShop">🛒 Tienda</button><button id="btnRecords">🏆 Récords</button><button id="btnAdmin">⚙ Admin</button></div>
   <div id="moneyTag"></div>
   <div class="ctl">WASD o FLECHAS mover · SHIFT correr · ESPACIO saltar · C agacharse · V cambiar vista (1ª/3ª persona) · H esconderse · E interactuar · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · Ratón o Z/X cámara · F2 admin<br>En el móvil: joystick a la izquierda (empuja a fondo para correr), botones a la derecha, y arrastra con otro dedo para girar la cámara.</div>
