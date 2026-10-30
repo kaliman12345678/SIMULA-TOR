@@ -4,3 +4,4 @@ tools/
 patch/
 *.zip
 *.log
+*.bak*

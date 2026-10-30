@@ -1,5 +1,5 @@
 ﻿const http = require('http'), fs = require('fs'), path = require('path');
-const types = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css' };
+const types = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css', '.png':'image/png', '.webmanifest':'application/manifest+json', '.json':'application/json' };
 const port = process.env.PORT || 8767;
 http.createServer((req, res) => {
   const p = path.join(__dirname, decodeURIComponent(req.url.split('?')[0]).replace(/^\/$/, '/index.html'));
@@ -10,3 +10,4 @@ http.createServer((req, res) => {
     res.end(b);
   });
 }).listen(port, () => console.log('Simula-tor en http://localhost:' + port));
+

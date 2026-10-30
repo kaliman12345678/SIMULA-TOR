@@ -2,63 +2,85 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Simula-tor</title>
 <style>
   :root { --red:#ff3b3b; --amber:#ffb020; --green:#3ddc84; --ar:#37f0ff; --line:#2a323c; }
-  * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; overflow:hidden; background:#000; color:#e8edf2; font:15px/1.45 "Segoe UI", system-ui, sans-serif; user-select:none; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#000; color:#e8edf2; font:15px/1.45 "Segoe UI", system-ui, sans-serif; user-select:none; -webkit-user-select:none; overscroll-behavior:none; touch-action:none; }
   #game { position:fixed; inset:0; }
-  .nohud .hud, .nohud #vig { display:none !important; }
-  canvas { display:block; }
+  canvas { display:block; touch-action:none; }
+  .nohud .hud, .nohud #vig, .nohud #touch { display:none !important; }
   .hud { position:fixed; pointer-events:none; text-shadow:0 0 4px #000, 0 2px 2px #000; font-family:Impact, "Arial Black", sans-serif; letter-spacing:1px; }
   #clock { top:10px; left:50%; transform:translateX(-50%); font-size:46px; color:#3ddc84; }
   #clock.warn { color:#ffb020; } #clock.crit { color:#ff3b3b; animation:blink .6s infinite; }
   @keyframes blink { 50% { opacity:.35; } }
   #life { top:62px; left:50%; transform:translateX(-50%); font-size:34px; color:#ff8a4a; }
   #life.warn { color:#ffb020; } #life.crit { color:#ff3b3b; animation:blink .5s infinite; }
+  #diffTag { top:6px; left:50%; margin-left:80px; font-size:13px; color:#9fb0c0; letter-spacing:2px; }
   .pop { position:fixed; left:50%; top:150px; transform:translateX(-50%); font:400 38px Impact, sans-serif; letter-spacing:2px; text-shadow:0 0 6px #000, 0 2px 2px #000; pointer-events:none; z-index:12; animation:popUp 1.4s ease-out forwards; }
   @keyframes popUp { from { opacity:1; transform:translate(-50%, 0); } to { opacity:0; transform:translate(-50%, -60px); } }
-  #alert { top:116px; left:50%; transform:translateX(-50%); font-size:26px; display:none; padding:2px 16px; border-radius:6px; }
+  #alert { top:116px; left:50%; transform:translateX(-50%); font-size:26px; display:none; padding:2px 16px; border-radius:6px; white-space:nowrap; }
   #alert.bad { color:#fff; background:#c01818cc; animation:blink .5s infinite; }
   #alert.ok { color:#fff; background:#1f7a4acc; }
+  #shift { top:160px; left:50%; transform:translateX(-50%); font:700 15px "Segoe UI", sans-serif; letter-spacing:1px; color:#37f0ff; display:none; background:#0009; padding:2px 12px; border-radius:6px; }
+  #shift.warn { color:#fff; background:#c07a10cc; animation:blink .5s infinite; }
   #stars { top:14px; right:22px; font-size:34px; letter-spacing:4px; }
   #stars .on { color:#f5c518; } #stars .off { color:#ffffff40; }
   #stars.flash { animation:blink .5s infinite; }
   #money { top:56px; right:22px; font-size:30px; color:#7ed957; }
   #inv { top:96px; right:22px; font:600 14px "Segoe UI", sans-serif; color:#dfe6ee; text-align:right; }
   #radarBox { left:22px; bottom:22px; width:190px; height:190px; }
-  #radar { width:190px; height:190px; border-radius:50%; border:3px solid #111; box-shadow:0 0 0 2px #fff4, 0 4px 14px #000a; background:#0008; }
+  #radar { width:100%; height:100%; border-radius:50%; border:3px solid #111; box-shadow:0 0 0 2px #fff4, 0 4px 14px #000a; background:#0008; }
   #stom { left:22px; bottom:222px; width:190px; font:700 12px "Segoe UI", sans-serif; }
   #stom .bar { height:10px; background:#0009; border:1px solid #fff5; border-radius:3px; overflow:hidden; margin-top:3px; }
   #stom .bar i { display:block; height:100%; width:100%; transition:width .3s; }
-  #sniffBox { left:50%; transform:translateX(-50%); top:80px; width:220px; font:700 12px "Segoe UI", sans-serif; text-align:center; display:none; }
+  #itemsBar { left:240px; bottom:70px; font:700 14px "Segoe UI", sans-serif; display:flex; gap:12px; }
+  #itemsBar span { background:#000a; padding:3px 9px; border-radius:6px; border:1px solid #fff3; }
+  #itemsBar span.none { opacity:.4; } #itemsBar b { color:#f5c518; margin-right:5px; font-family:"Courier New", monospace; }
+  #sniffBox { left:50%; transform:translateX(-50%); top:196px; width:220px; font:700 12px "Segoe UI", sans-serif; text-align:center; display:none; }
   #sniffBox .bar { height:9px; background:#0009; border:1px solid #fff5; border-radius:3px; overflow:hidden; margin-top:3px; }
   #sniffBar { height:100%; width:0; background:#ffb020; }
-  #obj { left:240px; bottom:30px; max-width:520px; font:600 18px "Segoe UI", sans-serif; color:#f5e27a; }
+  #obj { left:240px; bottom:26px; max-width:520px; font:600 18px "Segoe UI", sans-serif; color:#f5e27a; }
   #obj::before { content:"▶ "; color:#f5c518; }
   #prompt { left:50%; bottom:170px; transform:translateX(-50%); font:700 20px "Segoe UI", sans-serif; background:#000b; padding:6px 18px; border:2px solid #fff6; border-radius:8px; display:none; }
   #prompt b { color:#f5c518; border:2px solid #f5c518; border-radius:5px; padding:0 7px; margin-right:6px; }
-  #sub { left:50%; bottom:90px; transform:translateX(-50%); width:min(760px,86vw); text-align:center; font:500 19px/1.35 "Segoe UI", sans-serif; opacity:0; transition:opacity .3s; }
+  #sub { left:50%; bottom:100px; transform:translateX(-50%); width:min(760px,86vw); text-align:center; font:500 19px/1.35 "Segoe UI", sans-serif; opacity:0; transition:opacity .3s; }
   #sub.on { opacity:1; }
   #help { left:22px; top:14px; text-align:left; font:12px "Segoe UI", sans-serif; color:#cfd8e2; transition:opacity 1s; }
   #vig { position:fixed; inset:0; pointer-events:none; transition:background .5s; }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; }
   #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; display:flex; align-items:center; justify-content:center; font:700 40px Impact, sans-serif; color:#fff; transition:opacity .35s; z-index:15; }
   #fade.on { opacity:1; }
+  #btnAdminIn { position:fixed; left:8px; top:8px; z-index:9; opacity:.35; padding:2px 8px; font-size:16px; background:#0006; }
+  .nohud #btnAdminIn { display:none; }
 
   .overlay { position:fixed; inset:0; display:none; z-index:20; }
   .overlay.on { display:flex; }
-  #title { background:radial-gradient(circle at 50% 40%, #0008, #000d); flex-direction:column; align-items:center; justify-content:center; text-align:center; }
-  #title h1 { font:400 84px Impact, sans-serif; letter-spacing:6px; margin:0; text-shadow:0 0 18px #000; }
+  #title { background:radial-gradient(circle at 50% 40%, #0008, #000d); flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:12px; overflow:auto; }
+  #title h1 { font:400 76px Impact, sans-serif; letter-spacing:6px; margin:0; text-shadow:0 0 18px #000; }
   #title h1 span { color:var(--red); }
-  #title p { color:#cdd6df; max-width:620px; margin:8px 0 22px; text-shadow:0 0 6px #000; }
-  #title .ctl { font-size:13px; color:#aab5c0; margin-top:18px; line-height:1.8; }
-  button { font:inherit; color:inherit; background:#1b222a; border:1px solid var(--line); border-radius:8px; padding:10px 16px; cursor:pointer; }
+  #title p { color:#cdd6df; max-width:620px; margin:6px 0 12px; text-shadow:0 0 6px #000; }
+  #diffSel { display:flex; gap:8px; margin:4px 0; }
+  #diffSel button { font:400 22px Impact, sans-serif; letter-spacing:2px; padding:8px 20px; }
+  #diffSel button.on { background:#7a1010; border-color:var(--red); }
+  #diffDesc { color:#aab5c0; font-size:13px; min-height:20px; margin:4px 0 10px; max-width:520px; }
+  .mrow { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:5px 0; }
+  #moneyTag { color:#7ed957; font:600 14px "Segoe UI", sans-serif; margin-top:8px; }
+  #title .ctl { font-size:12.5px; color:#aab5c0; margin-top:12px; line-height:1.7; max-width:760px; }
+  button { font:inherit; color:inherit; background:#1b222a; border:1px solid var(--line); border-radius:8px; padding:10px 16px; cursor:pointer; touch-action:manipulation; }
   button:hover:not(:disabled) { border-color:var(--red); background:#232b35; }
   button:disabled { opacity:.4; cursor:not-allowed; }
   #btnStart { font:700 22px Impact, sans-serif; letter-spacing:3px; padding:14px 40px; background:#7a1010; border-color:var(--red); }
-  #dlg { background:#0006; align-items:center; justify-content:center; }
-  #dlgBox { width:min(640px,92vw); max-height:90vh; overflow:auto; background:#0e1217f2; border:1px solid var(--line); border-left:4px solid var(--red); border-radius:10px; padding:18px 20px; }
+  #dlg { background:#0006; align-items:center; justify-content:center; touch-action:pan-y; }
+  #dlgBox { width:min(640px,92vw); max-height:90vh; overflow:auto; background:#0e1217f2; border:1px solid var(--line); border-left:4px solid var(--red); border-radius:10px; padding:18px 20px; touch-action:pan-y; }
   #dlgT { font:400 26px Impact, sans-serif; letter-spacing:2px; color:var(--red); margin-bottom:6px; }
   #dlgX p { margin:6px 0; }
   #dlgO { display:grid; gap:8px; margin-top:12px; }
@@ -82,12 +104,69 @@
   #sweatArea { position:relative; width:100%; height:300px; border:1px dashed var(--line); border-radius:12px; }
   .drop { position:absolute; width:52px; height:52px; margin:-26px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:#6ad0ff; border:0; box-shadow:0 0 12px #6ad0ff; padding:0; }
 
-  #end { background:#000d; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; }
+  #end { background:#000d; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; overflow:auto; }
   #end h2 { font:400 76px Impact, sans-serif; letter-spacing:5px; margin:0 0 8px; }
   #end.dead h2 { color:var(--red); } #end.win h2 { color:var(--green); }
   #end.busted { animation:siren 1s infinite; }
   @keyframes siren { 0%,100% { box-shadow:inset 0 0 160px #ff000066; } 50% { box-shadow:inset 0 0 160px #0050ff66; } }
   #end p { max-width:640px; margin:6px auto; text-align:left; }
+
+  /* Panel de administración */
+  #admin { background:#000d; z-index:40; align-items:flex-start; justify-content:center; overflow:auto; padding:14px; touch-action:pan-y; }
+  .adm { width:min(520px,96vw); background:#0e1217; border:1px solid var(--line); border-top:4px solid var(--amber); border-radius:10px; padding:16px 18px; margin:auto; touch-action:pan-y; }
+  .adm.wide { width:min(900px,98vw); }
+  .adm h2 { font:400 26px Impact, sans-serif; letter-spacing:2px; color:var(--amber); margin:0 0 8px; }
+  .adm .dim { color:#8f9baa; font-size:12.5px; }
+  .adm .msg { color:var(--red); min-height:20px; }
+  .adm input[type=password], .adm input[type=text], .adm select, .adm textarea { background:#0a0d11; color:#e8edf2; border:1px solid var(--line); border-radius:6px; padding:8px 10px; font:inherit; user-select:text; -webkit-user-select:text; }
+  .adm input[type=password] { width:100%; margin:6px 0; font-size:18px; }
+  .adm textarea { width:100%; height:150px; font:12px "Courier New", monospace; margin-top:8px; }
+  .adm .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .admHead { display:flex; justify-content:space-between; align-items:center; }
+  .tabs { display:flex; gap:6px; margin:6px 0; }
+  .tabs button { flex:1; font:400 18px Impact, sans-serif; letter-spacing:2px; } .tabs button.on { background:#7a5a10; border-color:var(--amber); }
+  .admBody { max-height:62vh; overflow:auto; margin-top:6px; padding-right:4px; }
+  .adm details { border:1px solid var(--line); border-radius:8px; margin:8px 0; padding:2px 10px 8px; }
+  .adm summary { cursor:pointer; font:700 13px "Segoe UI", sans-serif; letter-spacing:1px; color:var(--ar); padding:8px 0; text-transform:uppercase; }
+  .prm { display:grid; grid-template-columns:1fr 96px 84px 30px; gap:8px; align-items:center; padding:3px 0; border-bottom:1px solid #ffffff0d; }
+  .prm label { font-size:13.5px; }
+  .prm input[type=number] { width:96px; background:#0a0d11; color:#e8edf2; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font:inherit; user-select:text; -webkit-user-select:text; }
+  .prm.chg label { color:var(--amber); } .prm .def { font-size:11px; color:#6f7c8a; } .prm .rs { padding:2px 6px; }
+
+  /* Controles táctiles */
+  #touch { display:none; position:fixed; inset:0; pointer-events:none; z-index:8; }
+  body.touch #touch { display:block; }
+  #joy { position:absolute; left:max(18px, env(safe-area-inset-left)); bottom:max(18px, env(safe-area-inset-bottom)); width:150px; height:150px; border-radius:50%; background:#ffffff14; border:2px solid #ffffff44; pointer-events:auto; touch-action:none; }
+  #knob { position:absolute; left:50%; top:50%; width:62px; height:62px; margin:-31px; border-radius:50%; background:#ffffff55; border:2px solid #ffffff88; }
+  #tbtns { position:absolute; right:max(14px, env(safe-area-inset-right)); bottom:max(14px, env(safe-area-inset-bottom)); display:grid; gap:8px; grid-template-areas:"e c a" "d b a"; grid-template-columns:64px 64px 84px; grid-template-rows:64px 64px; }
+  .tb { pointer-events:auto; touch-action:none; background:#0009; border:2px solid #ffffff44; border-radius:50%; padding:0; font-size:24px; line-height:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; }
+  .tb small { font:700 9px "Segoe UI", sans-serif; opacity:.8; margin-top:2px; }
+  .tb[data-k="Space"] { border-radius:42px; }
+  .tb.down { background:#ffffff44; } .tb.avail { border-color:#f5c518; box-shadow:0 0 12px #f5c518aa; background:#5a470a99; }
+  #titems { position:absolute; right:max(14px, env(safe-area-inset-right)); bottom:calc(max(14px, env(safe-area-inset-bottom)) + 150px); display:flex; gap:8px; }
+  .tb.it { width:50px; height:50px; font-size:20px; position:relative; }
+  .tb.it b { position:absolute; right:-2px; top:-4px; background:#f5c518; color:#000; font:700 11px "Segoe UI", sans-serif; border-radius:8px; padding:0 5px; }
+  #rotate { position:fixed; inset:0; z-index:60; background:#000; display:none; align-items:center; justify-content:center; flex-direction:column; font:400 30px Impact, sans-serif; letter-spacing:2px; text-align:center; }
+  #rotate span { font-size:70px; }
+  @media (orientation:portrait) and (pointer:coarse) { #rotate { display:flex; } }
+
+  @media (pointer:coarse), (max-height:520px) {
+    #clock { font-size:30px; top:4px; } #life { font-size:22px; top:38px; } #diffTag { display:none; }
+    #stars { font-size:20px; top:6px; right:10px; letter-spacing:2px; } #money { font-size:18px; top:32px; right:10px; } #inv { display:none; }
+    #radarBox { left:8px; top:44px; bottom:auto; width:112px; height:112px; }
+    #stom { left:8px; top:162px; bottom:auto; width:112px; font-size:10px; }
+    #itemsBar { display:none; }
+    #alert { top:68px; font-size:17px; } #shift { top:96px; font-size:12px; } #sniffBox { top:122px; width:160px; }
+    #obj { left:50%; transform:translateX(-50%); bottom:auto; top:6px; margin-top:0; font-size:11px; max-width:44vw; text-align:center; display:none !important; }
+    #prompt { bottom:170px; font-size:15px; } #sub { bottom:20px; font-size:14px; width:min(520px,60vw); }
+    #help { display:none; } .pop { top:90px; font-size:28px; }
+    #title h1 { font-size:42px; } #title p { font-size:12.5px; margin:2px 0 6px; } #title .ctl { display:none; }
+    #btnStart { padding:8px 26px; font-size:18px; } #diffSel button { font-size:17px; padding:6px 12px; }
+    #dlgBox { padding:12px 14px; max-height:94vh; } #dlgT { font-size:20px; } #dlgX p { font-size:13px; margin:3px 0; }
+    #dlgO button { padding:8px 10px; } #dlgO small { font-size:11px; }
+    #miniT { font-size:24px; margin-top:4px; } #miniH { font-size:13px; margin:4px 0; min-height:30px; } .big { width:150px; height:150px; font-size:16px; } #sweatArea { height:200px; }
+    #end h2 { font-size:40px; } #end p { font-size:13px; }
+  }
 </style>
 </head>
 <body class="nohud">
@@ -95,32 +174,48 @@
 <div id="vig"></div>
 
 <div id="clock" class="hud">--:--</div>
+<div id="diffTag" class="hud"></div>
+<div id="life" class="hud"></div>
 <div id="alert" class="hud"></div>
+<div id="shift" class="hud"></div>
 <div id="stars" class="hud"></div>
 <div id="money" class="hud"></div>
 <div id="inv" class="hud"></div>
-<div id="life" class="hud"></div>
 <div id="stom" class="hud">SALUD<div class="bar"><i id="hpBar"></i></div><span style="display:block;margin-top:6px">CÁPSULAS <span id="stomLbl"></span></span><div class="bar"><i id="stomBar"></i></div></div>
 <div id="radarBox" class="hud"><canvas id="radar" width="190" height="190"></canvas></div>
+<div id="itemsBar" class="hud"></div>
 <div id="sniffBox" class="hud">🐕 OLFATO<div class="bar"><div id="sniffBar"></div></div></div>
 <div id="obj" class="hud"></div>
 <div id="prompt" class="hud"></div>
 <div id="sub" class="hud"></div>
-<div id="help" class="hud">WASD mover · SHIFT correr · ESPACIO saltar · C agacharse · Ratón (arrastrar) o ← → cámara<br>E interactuar · H esconderse en taquilla · Q pastilla · R spray · F11 pantalla completa<br>Recoge 💊 (+6 s de vida) y ⏱ (+5 s de misión) · los policías de negro disparan si huyes</div>
+<div id="help" class="hud">WASD mover · SHIFT correr · ESPACIO saltar · C agacharse · Ratón (arrastrar) o ← → cámara<br>E interactuar · H esconderse · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · F2 admin · F11 pantalla completa<br>Recoge 💊 (+vida) y ⏱ (+misión) · los policías de negro disparan si huyes · el laberinto cambia y las puertas se cierran</div>
 <div id="flash"></div>
 <div id="fade"></div>
+<button id="btnAdminIn" title="Administración (F2)">⚙</button>
+<div id="touch"></div>
+<div id="rotate"><span>📱↻</span>Gira el móvil en horizontal</div>
 
 <div id="title" class="overlay on">
   <h1>SIMULA<span>-tor</span></h1>
-  <p>Eres una <b>mula</b>. Tienes <b>60 segundos</b> para abordar, pero tus cápsulas explotan en <b>45</b>. Recoge antiácidos 💊 y relojes ⏱ para ganar segundos. Esquiva policías (algunos van armados), perros y escáneres.</p>
-  <button id="btnStart">▶ NUEVA PARTIDA</button>
-  <div class="ctl">WASD: mover &nbsp;·&nbsp; SHIFT: correr (más sospechoso) &nbsp;·&nbsp; ESPACIO: saltar &nbsp;·&nbsp; C: agacharse (sigilo)<br>H: esconderse en taquillas &nbsp;·&nbsp; E: interactuar &nbsp;·&nbsp; Q: pastilla &nbsp;·&nbsp; R: spray &nbsp;·&nbsp; Ratón/← →: cámara &nbsp;·&nbsp; F11: pantalla completa<br>Los perros te huelen desde lejos y te persiguen. Si te alcanzan, ¡forcejea!</div>
+  <p>Eres una <b>mula</b>. Antes de que se acabe el tiempo debes abordar, pero tus cápsulas explotan antes. Recoge antiácidos 💊 y relojes ⏱, esquiva policías, perros y escáneres... y no te fíes del laberinto: <b>cambia solo</b> y las puertas se cierran a tu espalda.</p>
+  <div id="diffSel"><button data-d="novato">Novato</button><button data-d="dificil">Difícil</button><button data-d="experto">Experto</button></div>
+  <div id="diffDesc"></div>
+  <div class="mrow"><button id="btnStart">▶ NUEVA PARTIDA</button></div>
+  <div class="mrow"><button id="btnDaily">📅 Reto diario</button><button id="btnShop">🛒 Tienda</button><button id="btnRecords">🏆 Récords</button><button id="btnAdmin">⚙ Admin</button></div>
+  <div id="moneyTag"></div>
+  <div class="ctl">WASD mover · SHIFT correr · ESPACIO saltar · C agacharse · H esconderse en taquillas · E interactuar · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · Ratón/← → cámara · F2 admin<br>En el móvil: joystick a la izquierda (empuja a fondo para correr), botones a la derecha, y arrastra con otro dedo para girar la cámara.</div>
 </div>
 
 <div id="dlg" class="overlay"><div id="dlgBox"><div id="dlgT"></div><div id="dlgX"></div><div id="dlgO"></div></div></div>
 <div id="mini" class="overlay"><div id="miniT"></div><div id="miniH"></div><div id="miniA"></div></div>
 <div id="end" class="overlay"></div>
+<div id="admin" class="overlay"></div>
 
 <script src="dist/game.js"></script>
+<script>
+  if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && location.hostname !== 'localhost') {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
 </body>
 </html>
