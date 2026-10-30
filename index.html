@@ -55,6 +55,7 @@
   #sub { left:50%; bottom:100px; transform:translateX(-50%); width:min(760px,86vw); text-align:center; font:500 19px/1.35 "Segoe UI", sans-serif; opacity:0; transition:opacity .3s; }
   #sub.on { opacity:1; }
   #help { left:22px; top:14px; text-align:left; font:12px "Segoe UI", sans-serif; color:#cfd8e2; transition:opacity 1s; }
+  #xhair { left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:#ffffffcc; box-shadow:0 0 0 2px #0008; display:none; }
   #vig { position:fixed; inset:0; pointer-events:none; transition:background .5s; }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; }
   #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; display:flex; align-items:center; justify-content:center; font:700 40px Impact, sans-serif; color:#fff; transition:opacity .35s; z-index:15; }
@@ -157,8 +158,8 @@
     #stom { left:8px; top:162px; bottom:auto; width:112px; font-size:10px; }
     #itemsBar { display:none; }
     #alert { top:68px; font-size:17px; } #shift { top:96px; font-size:12px; } #sniffBox { top:122px; width:160px; }
-    #obj { left:50%; transform:translateX(-50%); bottom:auto; top:6px; margin-top:0; font-size:11px; max-width:44vw; text-align:center; display:none !important; }
-    #prompt { bottom:170px; font-size:15px; } #sub { bottom:20px; font-size:14px; width:min(520px,60vw); }
+    #obj { left:50%; transform:translateX(-50%); bottom:4px; font-size:11px; max-width:34vw; text-align:center; text-shadow:0 0 4px #000, 0 0 4px #000; }
+    #prompt { bottom:130px; font-size:16px; } #sub { bottom:46px; font-size:14px; width:min(520px,38vw); }
     #help { display:none; } .pop { top:90px; font-size:28px; }
     #title h1 { font-size:42px; } #title p { font-size:12.5px; margin:2px 0 6px; } #title .ctl { display:none; }
     #btnStart { padding:8px 26px; font-size:18px; } #diffSel button { font-size:17px; padding:6px 12px; }
@@ -188,7 +189,8 @@
 <div id="obj" class="hud"></div>
 <div id="prompt" class="hud"></div>
 <div id="sub" class="hud"></div>
-<div id="help" class="hud">WASD mover · SHIFT correr · ESPACIO saltar · C agacharse · Ratón (arrastrar) o ← → cámara<br>E interactuar · H esconderse · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · F2 admin · F11 pantalla completa<br>Recoge 💊 (+vida) y ⏱ (+misión) · los policías de negro disparan si huyes · el laberinto cambia y las puertas se cierran</div>
+<div id="help" class="hud">WASD o FLECHAS mover · SHIFT correr · ESPACIO saltar · C agacharse · V vista 1ª/3ª persona · Ratón (arrastrar) o Z/X cámara<br>E interactuar · H esconderse · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · F2 admin · F11 pantalla completa<br>Recoge 💊 (+vida) y ⏱ (+misión) · los policías de negro disparan si huyes · el laberinto cambia y las puertas se cierran</div>
+<div id="xhair" class="hud"></div>
 <div id="flash"></div>
 <div id="fade"></div>
 <button id="btnAdminIn" title="Administración (F2)">⚙</button>
@@ -203,7 +205,7 @@
   <div class="mrow"><button id="btnStart">▶ NUEVA PARTIDA</button></div>
   <div class="mrow"><button id="btnDaily">📅 Reto diario</button><button id="btnShop">🛒 Tienda</button><button id="btnRecords">🏆 Récords</button><button id="btnAdmin">⚙ Admin</button></div>
   <div id="moneyTag"></div>
-  <div class="ctl">WASD mover · SHIFT correr · ESPACIO saltar · C agacharse · H esconderse en taquillas · E interactuar · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · Ratón/← → cámara · F2 admin<br>En el móvil: joystick a la izquierda (empuja a fondo para correr), botones a la derecha, y arrastra con otro dedo para girar la cámara.</div>
+  <div class="ctl">WASD o FLECHAS mover · SHIFT correr · ESPACIO saltar · C agacharse · V cambiar vista (1ª/3ª persona) · H esconderse · E interactuar · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · Ratón o Z/X cámara · F2 admin<br>En el móvil: joystick a la izquierda (empuja a fondo para correr), botones a la derecha, y arrastra con otro dedo para girar la cámara.</div>
 </div>
 
 <div id="dlg" class="overlay"><div id="dlgBox"><div id="dlgT"></div><div id="dlgX"></div><div id="dlgO"></div></div></div>

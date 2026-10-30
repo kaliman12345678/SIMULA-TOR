@@ -569,7 +569,7 @@ function boom() {
     const m = new THREE.Mesh(new THREE.SphereGeometry(rnd(.25, .8), 8, 8), new THREE.MeshBasicMaterial({ color:[0xff5a1a, 0xffb020, 0xc01818, 0x333333][i % 4], transparent:true }));
     m.position.set(p.x, 1.2, p.z); m.userData = { v:new THREE.Vector3(rnd(-6, 6), rnd(3, 11), rnd(-6, 6)), life:1.6 }; scene.add(m); boomMeshes.push(m);
   }
-  player.visible = false; G.shake = 1.2;
+  player.visible = false; G.exploded = true; G.shake = 1.2;
 }
 
 function end(kind, title, html, extra) {
@@ -616,20 +616,22 @@ function runCheck(c, mult = 1) {
 }
 
 /* ---------- Diálogos ---------- */
-function closeDialog() { $('dlg').classList.remove('on'); G.dlgKey = null; }
+function closeDialog() { $('dlg').classList.remove('on'); G.dlgKey = null; G.dlgEsc = null; }
 function dialog(sc) {
+  if (document.exitPointerLock) document.exitPointerLock();
   return new Promise(res => {
     const d = $('dlg'); d.classList.add('on');
     $('dlgT').textContent = sc.title; $('dlgX').innerHTML = sc.text || '';
     const box = $('dlgO'); box.innerHTML = '';
     const opts = sc.opts.filter(o => o.show !== false);
-    const finish = o => { d.classList.remove('on'); G.dlgKey = null; res(o); };
+    const finish = o => { d.classList.remove('on'); G.dlgKey = null; G.dlgEsc = null; res(o); };
     opts.forEach((o, i) => {
       const b = document.createElement('button');
       b.innerHTML = `<span class="k">${i + 1}</span><span><b>${o.label}</b>${o.hint ? `<small>${hintS(o.hint)}</small>` : ''}</span>`;
       b.disabled = !!o.disabled; b.onclick = () => finish(o); box.appendChild(b);
     });
     G.dlgKey = n => { const o = opts[n]; if (o && !o.disabled) finish(o); };
+    const bk = opts.find(o => o.back || o.close); G.dlgEsc = bk ? () => finish(bk) : null;   // Esc = Atrás / Volver
   });
 }
 
@@ -674,7 +676,10 @@ async function resolveChecks(list, out) {
 async function doOption(o) {
   const out = [];
   if (o.cost) S.cash -= o.cost;
-  if (o.time) { await fadeTime(o.time); if (!advance(o.time)) return false; }
+  if (o.time) {
+    if (o.win) { const s = o.time * P.actionTime; S.time = Math.max(S.time, s + .3); S.life = Math.max(S.life, s * 1.3 + .3); syncLife(); }   // llegar a la puerta nunca te mata por el trámite
+    await fadeTime(o.time); if (!advance(o.time)) return false;
+  }
   if (o.heat) addHeat(o.heat);
   if (S.over) return false;
   if (o.fx) { const r = o.fx(); if (r) out.push(r); }
@@ -736,11 +741,11 @@ const ZDEF = [
     opts:[{ label:'Gafas y gorra · $30', hint:'3 min · -10 sospecha', time:3, cost:30, disabled:S.cash < 30, heat:-10,
       fx(){ const u = player.userData; u.shades.visible = true; u.hat.visible = true; u.hat.material.color.set(0x222222); return 'Con las gafas puestas pareces menos nervioso. O más misterioso. Ambas son una mejora.'; } }, exitOpt] }) },
   { x:35.5, z:-55.4, r:3.4, label:'Entrar a los baños', menu:bathMenu },
-  { x:0, z:-62.3, r:4, label:'Puerta de embarque', menu:() => ({ title:'PUERTA 27 · ÁMSTERDAM', text:'<p>La azafata sonríe con una paciencia que se acaba justo en tu fila. Al fondo, la manga del avión es el túnel más hermoso que has visto. Último filtro: un agente revisa pasaportes como un crítico gastronómico.</p>',
+  { x:0, z:-62.3, r:5.5, label:'Puerta de embarque', menu:() => ({ title:'PUERTA 27 · ÁMSTERDAM', text:'<p>La azafata sonríe con una paciencia que se acaba justo en tu fila. Al fondo, la manga del avión es el túnel más hermoso que has visto. Último filtro: un agente revisa pasaportes como un crítico gastronómico.</p>',
     opts:[
-      { label:'Fila normal', hint:'8 min · calma · revisión estándar', time:8, checks:['quiz'], win:true },
-      { label:'Fila prioritaria', hint:'3 min · +6 sospecha · "¿por qué tienes prioridad?"', time:3, heat:6, checks:['quiz'], win:true },
-      { label:'Correr a la puerta', hint:'2 min · +15 sospecha · el sudor es sospechoso', time:2, heat:15, checks:['quiz'], win:true },
+      { label:'Fila normal', hint:'3 min · calma · revisión estándar', time:3, checks:['quiz'], win:true },
+      { label:'Fila prioritaria', hint:'1.5 min · +6 sospecha · "¿por qué tienes prioridad?"', time:1.5, heat:6, checks:['quiz'], win:true },
+      { label:'Correr a la puerta', hint:'0.8 min · +15 sospecha · el sudor es sospechoso', time:.8, heat:15, checks:['quiz'], win:true },
       exitOpt] }) }
 ];
 ZDEF.forEach(z => ZONES.push(z));
@@ -765,6 +770,7 @@ TRIGS.push(
 const rate = (hits, n) => hits >= n - 1 ? .5 : hits >= Math.ceil(n / 2) ? .85 : 1.3;
 
 function mini(kind, opts = {}) {
+  if (document.exitPointerLock) document.exitPointerLock();
   return new Promise(resolve => {
     const m = $('mini'), area = $('miniA'); m.classList.add('on'); area.innerHTML = '';
     $('miniT').textContent = MINI[kind].title.toUpperCase(); $('miniH').textContent = MINI[kind].hint;
@@ -856,11 +862,26 @@ const SETUP = [
     opts:[{ label:'✈ Entrar al aeropuerto', hint:'Empieza la cuenta regresiva', go:true }] })
 ];
 
+function backToTitle() { G.mode = 'title'; G.busy = false; document.body.classList.add('nohud'); $('title').classList.add('on'); refreshTitle(); }
+
+/* Preparación con botón "Atrás": cada paso guarda una copia del estado para poder deshacer lo elegido */
 async function setupFlow() {
   S = newState();
-  for (let s = 0; s < 3; s++) (await dialog(SETUP[s]())).fx();
-  for (;;) { const o = await dialog(SETUP[3]()); if (o.done) break; o.fx(); }
-  await dialog(SETUP[4]());
+  const snaps = []; let step = 0;
+  while (step < 5) {
+    if (!snaps[step]) snaps[step] = structuredClone(S);
+    const sc = SETUP[step]();
+    sc.opts = sc.opts.concat([{ label:'← Atrás', hint:step === 0 ? 'Volver al menú principal (cambiar de modo)' : 'Volver al paso anterior (se deshace lo elegido aquí)', back:true }]);
+    const o = await dialog(sc);
+    if (o.back) {
+      if (step === 0) { backToTitle(); return; }
+      if (step === 4) { step = 3; continue; }                      // del resumen vuelves a las compras sin perderlas
+      snaps.length = step; step--; S = structuredClone(snaps[step]); continue;
+    }
+    if (step === 3) { if (o.done) step++; else o.fx(); continue; }   // las compras se repiten hasta "Terminar"
+    if (step === 4) break;
+    o.fx(); step++;
+  }
   startGame();
 }
 
@@ -906,11 +927,19 @@ addEventListener('keydown', e => {
   if (e.code === 'F2') { e.preventDefault(); toggleAdmin(); return; }
   if ($('admin').classList.contains('on')) return;
   keys[e.code] = true; pressed[e.code] = true;
+  if (e.code === 'Escape' && G.dlgEsc) { e.preventDefault(); G.dlgEsc(); return; }
   if (G.dlgKey && /^Digit[1-9]$/.test(e.code)) G.dlgKey(+e.code.slice(5) - 1);
-  if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
-const cam = { yaw:0, pitch:.5, dist:9.5, x:0, y:0, z:0 };
+const cam = { yaw:0, pitch:.5, dist:9.5, x:0, y:0, z:0, fp:0, view:(() => { try { return localStorage.getItem('simulator.view') === 'fp' ? 'fp' : 'tp'; } catch (e) { return 'tp'; } })() };
+function applyViewFov() { camera.fov = cam.view === 'fp' ? 75 : 62; camera.updateProjectionMatrix(); }
+function toggleView() {
+  cam.view = cam.view === 'fp' ? 'tp' : 'fp'; try { localStorage.setItem('simulator.view', cam.view); } catch (e) {}
+  applyViewFov(); if (cam.view === 'tp' && document.exitPointerLock) document.exitPointerLock();
+  sub(cam.view === 'fp' ? '<b>Vista:</b> primera persona (V para cambiar)' : '<b>Vista:</b> tercera persona (V para cambiar)', 2200);
+}
+applyViewFov();
 initInput({ keys, pressed, cam, canvas:renderer.domElement, isTouch, clamp });
 
 /* ---------- Menú principal ---------- */
@@ -1285,12 +1314,12 @@ const PR = .45;
 let lastStride = 0;
 function playerUpdate(dt) {
   const u = player.userData, play = G.mode === 'play';
-  if (play && !G.busy) { if (keys.ArrowLeft) cam.yaw += dt * 1.8; if (keys.ArrowRight) cam.yaw -= dt * 1.8; }
+  if (play && !G.busy) { if (keys.KeyZ) cam.yaw += dt * 1.8; if (keys.KeyX) cam.yaw -= dt * 1.8; }
   if (u.hidden) { u.px = u.hidden.x; u.pz = u.hidden.z; u.vx = u.vz = 0; u.hideT += dt; return; }
   let mx = 0, mz = 0, sprint = false;
   if (play && !G.busy) {
     const shoes = lvl('shoes') * .25;
-    let ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), iz = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0), analog = 0;
+    let ix = ((keys.KeyD || keys.ArrowRight) ? 1 : 0) - ((keys.KeyA || keys.ArrowLeft) ? 1 : 0), iz = ((keys.KeyS || keys.ArrowDown) ? 1 : 0) - ((keys.KeyW || keys.ArrowUp) ? 1 : 0), analog = 0;
     if (TOUCH.mag > .08) { ix += TOUCH.x; iz += TOUCH.z; analog = TOUCH.mag; }
     if (ix || iz) {
       const l = Math.hypot(ix, iz), nx = ix / l, nz = iz / l;
@@ -1584,9 +1613,9 @@ function clockTick(dt) {
     for (const z of ZONES) if (Math.hypot(u.px - z.x, u.pz - z.z) < z.r) { G.near = z; break; }
     for (const h of HIDES) if (Math.hypot(u.px - h.x, u.pz - h.z) < 2.3) { G.nearHide = h; break; }
   }
-  if (pressed.KeyE && G.near && u.grounded) openZone(G.near);
+  if (pressed.KeyE && G.near) openZone(G.near);
   if (pressed.KeyH) { if (u.hidden) unhidePlayer(); else if (G.nearHide) hidePlayer(G.nearHide); }
-  if (u.hidden && u.hideT > .5 && (pressed.KeyE || pressed.Space || pressed.KeyW || pressed.KeyA || pressed.KeyS || pressed.KeyD)) unhidePlayer();
+  if (u.hidden && u.hideT > .5 && (pressed.KeyE || pressed.Space || pressed.KeyW || pressed.KeyA || pressed.KeyS || pressed.KeyD || pressed.ArrowUp || pressed.ArrowDown || pressed.ArrowLeft || pressed.ArrowRight)) unhidePlayer();
   if (pressed.KeyC && !u.hidden) u.crouch = !u.crouch;
   if (pressed.KeyQ && S.inv.pills > 0) { sub(pillFx(), 3500); addHeat(2); }
   if (pressed.KeyR && S.inv.perfume > 0 && !S.inv.perfumeOn) { S.inv.perfume--; S.inv.perfumeOn = true; sub('Hueles a pino sintético. Un pino con problemas legales.', 3500); }
@@ -1598,6 +1627,18 @@ function updateCamera(dt) {
     const a = G.t * .08; camera.position.set(Math.sin(a) * 50, 22, 10 + Math.cos(a) * 50); camera.lookAt(0, 2, -10); return;
   }
   const u = player.userData;
+  if (!G.exploded) player.visible = cam.view !== 'fp' && !u.hidden;
+  if (cam.view === 'fp') {
+    const eye = (u.crouch ? 1.2 : 1.62) + u.y, bob = u.grounded && u.speed > .5 ? Math.sin(G.t * (u.sprint ? 14 : 9)) * .035 : 0;
+    let fx = 0, fy = 0;
+    if (S && S.integrity < 40 && G.mode === 'play') { fx = (Math.random() - .5) * .03; fy = (Math.random() - .5) * .03; }
+    if (G.shake > 0) { G.shake -= dt; fx += (Math.random() - .5) * G.shake * .4; fy += (Math.random() - .5) * G.shake * .4; }
+    camera.position.set(u.px + fx, eye + bob + fy, u.pz);
+    const cp = Math.cos(cam.fp);
+    camera.lookAt(u.px - Math.sin(cam.yaw) * cp * 5, eye + bob + Math.sin(cam.fp) * 5, u.pz - Math.cos(cam.yaw) * cp * 5);
+    if (G.planeGo) camera.lookAt(planeObj.position.x * .5, 3, -60);
+    return;
+  }
   const tx = u.px, ty = 1.6 + u.y * .7, tz = u.pz;
   const cp = Math.cos(cam.pitch), px = tx + Math.sin(cam.yaw) * cp * cam.dist, py = ty + Math.sin(cam.pitch) * cam.dist, pz = tz + Math.cos(cam.yaw) * cp * cam.dist;
   const k = Math.min(1, dt * 10);
@@ -1697,7 +1738,8 @@ function hudUpdate() {
   else if (G.near && !G.busy && G.mode === 'play') { p.style.display = 'block'; p.innerHTML = `<b>${isTouch ? '✋' : 'E'}</b>${G.near.label}`; }
   else if (G.nearHide && !G.busy && G.mode === 'play') { p.style.display = 'block'; p.innerHTML = `<b>${isTouch ? '🙈' : 'H'}</b>Esconderse`; }
   else p.style.display = 'none';
-  updateTouchUI(S, { act: !!G.near && !G.busy, hide: !!(G.nearHide || u.hidden) });
+  updateTouchUI(S, { act: !!G.near && !G.busy, hide: !!(G.nearHide || u.hidden), actLabel: G.near && G.near.label === 'Puerta de embarque' ? 'Abordar' : 'Actuar' });
+  $('xhair').style.display = (G.mode === 'play' && cam.view === 'fp' && !G.busy) ? 'block' : 'none';
   drawRadar(obj);
   const showMarker = G.mode === 'play' && (!obj.far || Math.hypot(u.px - obj.x, u.pz - obj.z) < 28);
   objMarker.visible = showMarker; objMarker.position.set(obj.x, 3.2 + Math.sin(G.t * 3) * .3, obj.z); objMarker.rotation.y = G.t * 2;
@@ -1719,6 +1761,7 @@ function adaptQuality(rawDt) {
 }
 function stepSim(dt) {
   if (G.paused) return;
+  if (pressed.KeyV && G.mode === 'play') toggleView();
   G.t += dt;
   mazeUpdate(dt); itemsUpdate(dt);
   worldUpdate(dt); pickupsUpdate(dt);
@@ -1736,5 +1779,5 @@ function loop() {
 
 buildWorld(); buildActors(); loop();
 
-window.__dbg = { P, cfg, MZ, ROWS, LDOORS, SMOKES, DECOYS, get DRONE() { return DRONE; }, useItem, rebuildNav, resetMaze, doShift, applyArmed, setArmed, flow: (x, z) => flowDir(routeField, gridR, x, z), nav: () => ({ gridG, gridD, gridR, routeField, cellIdx, bfs }),
+window.__dbg = { cam, camera, toggleView, P, cfg, MZ, ROWS, LDOORS, SMOKES, DECOYS, get DRONE() { return DRONE; }, useItem, rebuildNav, resetMaze, doShift, applyArmed, setArmed, flow: (x, z) => flowDir(routeField, gridR, x, z), nav: () => ({ gridG, gridD, gridR, routeField, cellIdx, bfs }),
   sim: (secs, dt = .05) => { for (let i = 0; i < Math.round(secs / dt); i++) stepSim(dt); }, PICKUPS, keys, pressed, DOGS, NPCS, HIDES, COLL, startChase, startDogHunt, S: () => S, G, player: () => player, ZONES, TRIGS, GUARDS, newState, CARGO, METHOD, PROFILE, meta, finishRun, toggleAdmin };

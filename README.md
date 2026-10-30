@@ -35,7 +35,8 @@ Todos los valores se pueden cambiar en el **panel de administración** (ver abaj
 
 | Tecla | Acción |
 |---|---|
-| WASD | Mover |
+| WASD o flechas | Mover |
+| V | Cambiar vista: tercera persona / primera persona |
 | Shift | Correr (más sospechoso) |
 | Espacio | Saltar (los muros bajos son atajos a la vista) |
 | C | Agacharse (sigilo) |
@@ -43,11 +44,12 @@ Todos los valores se pueden cambiar en el **panel de administración** (ver abaj
 | E | Interactuar |
 | Q / R | Pastilla / spray anti-olor |
 | 1 / 2 / 3 / 4 | Humo / señuelo / EMP / spray anti-perros |
-| Ratón (arrastrar) o ← → | Cámara |
+| Ratón (arrastrar) o Z / X | Cámara (en primera persona el ratón se captura al hacer clic; Esc lo libera) |
+| Esc | Atrás / cerrar el diálogo (preparación, tienda, récords) |
 | F2 | Panel de administración |
 | F11 | Pantalla completa (versión de escritorio) |
 
-**Móvil** (en horizontal): joystick a la izquierda (empújalo a fondo para correr), botones a la derecha (saltar, actuar, esconder, agacharse, pastilla), objetos arriba de los botones y un dedo libre arrastrando para girar la cámara.
+**Móvil** (en horizontal): joystick a la izquierda (empújalo a fondo para correr), botones a la derecha (saltar, actuar, esconder, agacharse, pastilla), objetos arriba de los botones, 👁 para cambiar de vista (1ª/3ª persona) y un dedo libre arrastrando para girar la cámara. Cuando estás en la puerta, el botón ✋ pasa a decir **Abordar**.
 
 ## Calidad gráfica y rendimiento
 

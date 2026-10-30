@@ -7,12 +7,21 @@ export function initInput({ keys, pressed, cam, canvas, isTouch, clamp }) {
 
   /* --- Cámara: arrastrar con ratón o con un dedo libre --- */
   const ptr = new Map();
-  canvas.addEventListener('pointerdown', e => { ptr.set(e.pointerId, { x:e.clientX, y:e.clientY }); if (e.pointerType === 'touch') document.body.classList.add('touch'); });
+  canvas.addEventListener('pointerdown', e => {
+    ptr.set(e.pointerId, { x:e.clientX, y:e.clientY }); if (e.pointerType === 'touch') document.body.classList.add('touch');
+    if (e.pointerType === 'mouse' && cam.view === 'fp' && canvas.requestPointerLock && document.pointerLockElement !== canvas) { try { canvas.requestPointerLock(); } catch (err) {} }   // ratón capturado en primera persona
+  });
+  addEventListener('mousemove', e => {
+    if (document.pointerLockElement !== canvas) return;
+    cam.yaw -= e.movementX * .0022; cam.fp = clamp(cam.fp - e.movementY * .0018, -1.3, 1.3);
+  });
   addEventListener('pointermove', e => {
+    if (document.pointerLockElement === canvas) return;
     const p = ptr.get(e.pointerId); if (!p) return;
     const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
     const k = e.pointerType === 'touch' ? .0075 : .006;
-    cam.yaw -= dx * k; cam.pitch = clamp(cam.pitch + dy * (k * .65), .15, 1.15);
+    cam.yaw -= dx * k;
+    if (cam.view === 'fp') cam.fp = clamp(cam.fp - dy * (k * .65), -1.3, 1.3); else cam.pitch = clamp(cam.pitch + dy * (k * .65), .15, 1.15);
   });
   const up = e => ptr.delete(e.pointerId);
   addEventListener('pointerup', up); addEventListener('pointercancel', up);
@@ -29,7 +38,7 @@ export function initInput({ keys, pressed, cam, canvas, isTouch, clamp }) {
       <button class="tb" data-k="KeyC" style="grid-area:d">⇩<small>Agachar</small></button>
       <button class="tb" data-k="KeyQ" style="grid-area:e">💊<small>Pastilla</small></button>
     </div>
-    <div id="titems">${ITEMS.map(([c, ic, id]) => `<button class="tb it" data-k="${c}" data-i="${id}">${ic}<b id="ti-${id}">0</b></button>`).join('')}</div>`;
+    <div id="titems"><button class="tb it" data-k="KeyV" title="Vista">👁</button>${ITEMS.map(([c, ic, id]) => `<button class="tb it" data-k="${c}" data-i="${id}">${ic}<b id="ti-${id}">0</b></button>`).join('')}</div>`;
   root.querySelectorAll('button[data-k]').forEach(b => {
     const k = b.dataset.k;
     b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); keys[k] = true; pressed[k] = true; b.classList.add('down'); try { b.setPointerCapture(e.pointerId); } catch (err) {} });
@@ -57,7 +66,8 @@ export function updateTouchUI(S, avail) {
   const set = (id, v) => { const e = document.getElementById(id); if (e && e.textContent !== String(v)) e.textContent = v; };
   if (S) ITEMS.forEach(([, , id]) => set('ti-' + id, S.inv[id] || 0));
   const a = document.getElementById('tAct'), h = document.getElementById('tHide');
-  if (a) a.classList.toggle('avail', !!avail.act); if (h) h.classList.toggle('avail', !!avail.hide);
+  if (a) { a.classList.toggle('avail', !!avail.act); const sm = a.querySelector('small'); if (sm && avail.actLabel && sm.textContent !== avail.actLabel) sm.textContent = avail.actLabel; }
+  if (h) h.classList.toggle('avail', !!avail.hide);
 }
 
 export async function goFullscreen() {
