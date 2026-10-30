@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { P, cfg, applyDifficulty, DIFF_IDS, DIFF_LABEL, DIFF_DESC, openAdmin, onAdminClose, isTouch, qualityTier } from './config.js';
 import { meta, saveMeta, UPGRADES, lvl, buy, addMoney, mulberry32, dailySeed, addRecord, records } from './meta.js';
 import { TOUCH, initInput, updateTouchUI, goFullscreen, toggleFullscreen, inFullscreen, isIOS, isStandalone } from './touch.js';
+import { initMusic, music, setMood, start as musicStart, setMuted, stinger, roar } from './music.js';
 
 /* ==========================================================
    UTILIDADES
@@ -238,7 +239,7 @@ function buildWorld() {
 
   // Muros exteriores
   const wallC = 0xe7e1d6;
-  solid(-41, -71, 41, -70, 6, 0x6fb6d6, { mat:{ transparent:true, opacity:.4, roughness:.1 }, los:false, shadow:false });
+  solid(-41, -71, -3, -70, 6, 0x6fb6d6, { mat:{ transparent:true, opacity:.4, roughness:.1 }, los:false, shadow:false }); solid(3, -71, 41, -70, 6, 0x6fb6d6, { mat:{ transparent:true, opacity:.4, roughness:.1 }, los:false, shadow:false });
   solid(-41, -71, -40, 29, 6, wallC); solid(40, -71, 41, 29, 6, wallC);
   solid(-41, 28, -5, 29, 6, wallC); solid(5, 28, 41, 29, 6, wallC);
   solid(-5, 28, 5, 29, 1, 0x222222, { coll:false, y0:5 });
@@ -284,10 +285,10 @@ function buildWorld() {
   buildMazeRows();
 
   // Puerta de embarque
-  solid(-6, -66, 6, -64.6, 1.1, 0x2e3a4a); label('PUERTA 27 · ÁMSTERDAM', 0, 4.4, -66.2, 11, '#ffffff');
+  solid(-6, -66, -1.6, -64.6, 1.1, 0x2e3a4a); solid(1.6, -66, 6, -64.6, 1.1, 0x2e3a4a); deco(-1.7, -65.6, -1.5, -65, 1.3, 0xb0b8c4, 0); deco(1.5, -65.6, 1.7, -65, 1.3, 0xb0b8c4, 0); deco(-1.5, -65.4, 1.5, -65.2, .04, 0x3ddc84, 1.2, { emissive:0x1fa05a, emissiveIntensity:1 }); label('PUERTA 27 · ÁMSTERDAM', 0, 4.4, -66.2, 11, '#ffffff');
   label('ABORDAJE', 0, 6.3, -69.5, 7, '#3ddc84');
   // Pasarela y avión
-  deco(-2.5, -86, 2.5, -70, 3.2, 0x8a93a0, 0.1);
+  buildBridge();
   buildPlane();
 
   // Exteriores: farolas, árboles, taxis
@@ -495,7 +496,7 @@ function buildActors() {
   scene.add(player);
   Object.assign(player.userData, { px:0, pz:36, vx:0, vz:0, ang:Math.PI, y:0, vy:0, grounded:true, hidden:null, crouch:false, hideT:0, sprint:false, speed:0 });
   player.position.set(0, 0, 36); player.rotation.y = Math.PI;
-  buildDrone(); initNav(); resnapPickups();
+  buildDrone(); initNav(); resnapPickups(); buildCabin();
 }
 
 function outfit(profile) {
@@ -576,6 +577,7 @@ function end(kind, title, html, extra) {
   if (!S || S.over) return;
   S.over = true; G.mode = 'over'; G.busy = true; closeDialog(); $('mini').classList.remove('on');
   const won = kind === 'win'; const rewards = finishRun(kind);
+  G.endMood = won ? 'win' : 'sad'; if (!won) setTimeout(() => stinger('lose'), kind === 'boom' ? 1800 : 600);
   if (kind === 'boom') boom();
   if (kind === 'busted') { beep(700, .25, 'sawtooth', .08); setTimeout(() => beep(520, .25, 'sawtooth', .08), 280); setTimeout(() => beep(700, .25, 'sawtooth', .08), 560); }
   if (kind === 'shot') { noise(.5, .5, 1800); beep(90, .4, 'sawtooth', .15); G.shake = .8; }
@@ -585,13 +587,6 @@ function end(kind, title, html, extra) {
     e.innerHTML = `<h2>${won ? '✈ ' : '☠ '}${title}</h2><p>${html}</p>${extra ? `<p>${extra}</p>` : ''}${rewards}<p style="text-align:center;margin-top:20px"><button id="again" style="font:700 20px Impact;letter-spacing:2px;padding:12px 30px">↺ JUGAR OTRA VEZ</button></p>`;
     $('again').onclick = () => location.reload();
   }, delay);
-}
-
-function victory() {
-  const payout = Math.round(S.cargo.profit * (.6 + .4 * S.integrity / 100));
-  G.planeGo = true; G.mode = 'over';
-  end('win', 'ABORDASTE', `Cruzas la manga con las rodillas flojas y te dejas caer en el asiento 34B. El pasajero de al lado te dice: "Pareces nervioso". Respondes: "Odio volar".<br>Mientras el avión despega, tu estómago gruñe. Es el sonido más bonito que has oído.<br><i>(Fase 3: vuelo, aduana de destino y entrega... próximamente.)</i>`,
-    `Tiempo de misión restante: ${fmtS(Math.max(0, S.time))} s · Vida de las cápsulas: ${fmtS(Math.max(0, S.life))} s · Salud: ${Math.max(0, S.hp)}%<br>Pago: $${payout} + efectivo $${S.cash} = <b>$${payout + S.cash}</b>`);
 }
 
 /* Probabilidades de detección */
@@ -690,14 +685,15 @@ async function doOption(o) {
 }
 
 async function openZone(z) {
-  G.busy = true;
+  G.busy = true; G.inZone = true;
   for (;;) {
     const o = await dialog(z.menu());
     if (o.close) break;
     const again = await doOption(o);
     if (!again || S.over) break;
   }
-  if (!S.over) G.busy = false;
+  G.inZone = false;
+  if (!S.over && G.mode === 'play') G.busy = false;
 }
 
 /* ---------- Escenas de menú ---------- */
@@ -772,12 +768,12 @@ const rate = (hits, n) => hits >= n - 1 ? .5 : hits >= Math.ceil(n / 2) ? .85 : 
 function mini(kind, opts = {}) {
   if (document.exitPointerLock) document.exitPointerLock();
   return new Promise(resolve => {
-    const m = $('mini'), area = $('miniA'); m.classList.add('on'); area.innerHTML = '';
+    const m = $('mini'), area = $('miniA'); m.classList.add('on'); area.innerHTML = ''; G.miniKind = kind;
     $('miniT').textContent = MINI[kind].title.toUpperCase(); $('miniH').textContent = MINI[kind].hint;
     let done = false, cleanup = [];
     const finish = (score, mult, text) => {
       if (done) return; done = true; cleanup.forEach(f => f()); $('miniH').textContent = text;
-      setTimeout(() => { m.classList.remove('on'); resolve({ score, mult }); }, 1100);
+      setTimeout(() => { m.classList.remove('on'); G.miniKind = null; resolve({ score, mult }); }, 1100);
     };
     const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; area.appendChild(e); return e; };
     const keys = (down, up) => {
@@ -903,12 +899,15 @@ function finishRun(kind) {
   const won = kind === 'win', pk = S.picked || 0;
   meta.runs++; if (won) meta.wins++;
   const payout = won ? Math.round(S.cargo.profit * (.6 + .4 * S.integrity / 100)) : 0, mult = { novato:1, dificil:1.3, experto:1.8 }[P.diff] || 1;
-  const score = won ? Math.round((payout / 10 + Math.max(0, S.time) * 20 + Math.max(0, S.life) * 15 + Math.max(0, S.hp) * 2 + pk * 30) * mult) : Math.round(pk * 30 + (S.passed ? 200 : 0));
-  const money = won ? Math.round(payout / 10 * P.payoutMul + Math.max(0, S.time) * 2) : Math.round((pk * 6 + (S.passed ? 40 : 0)) * P.payoutMul);
+  const bm = won ? (S.bonusMoney || 0) : 0, bs = won ? (S.bonusScore || 0) : 0;
+  const score = Math.max(0, (won ? Math.round((payout / 10 + Math.max(0, S.time) * 20 + Math.max(0, S.life) * 15 + Math.max(0, S.hp) * 2 + pk * 30) * mult) : Math.round(pk * 30 + (S.passed ? 200 : 0))) + bs);
+  const partPay = won ? Math.round(payout / 10 * P.payoutMul) : 0, partTime = won ? Math.round(Math.max(0, S.time) * 2) : 0;
+  const money = Math.max(0, (won ? partPay + partTime : Math.round((pk * 6 + (S.passed ? 40 : 0)) * P.payoutMul)) + bm);
   addMoney(money);
   let rec = '';
   if (won) { const isNew = addRecord(P.diff, { score, time:+(S.playT || 0).toFixed(1), date:new Date().toLocaleDateString(), seed:G.seed }, G.daily); rec = isNew ? ' 🏆 <b>¡NUEVO RÉCORD!</b>' : ''; }
   saveMeta();
+  G.lastRun = { won, score, money, payout, partPay, partTime, bm, rec: rec !== '' };
   return `<p style="text-align:center">Modo <b>${DIFF_LABEL[P.diff]}</b>${G.daily ? ' · reto diario' : ''} · Puntuación: <b>${score}</b> · Dinero ganado: <b>$${money}</b> (total $${meta.money})${rec}</p>`;
 }
 
@@ -1333,6 +1332,7 @@ const PR = .45;
 let lastStride = 0;
 function playerUpdate(dt) {
   const u = player.userData, play = G.mode === 'play';
+  if (G.mode === 'cine' || G.mode === 'cabin') return cabinPlayer(dt);
   if (play && !G.busy) { if (keys.KeyZ) cam.yaw += dt * 1.8; if (keys.KeyX) cam.yaw -= dt * 1.8; }
   if (u.hidden) { u.px = u.hidden.x; u.pz = u.hidden.z; u.vx = u.vz = 0; u.hideT += dt; return; }
   let mx = 0, mz = 0, sprint = false;
@@ -1646,8 +1646,10 @@ function updateCamera(dt) {
     const a = G.t * .08; camera.position.set(Math.sin(a) * 50, 22, 10 + Math.cos(a) * 50); camera.lookAt(0, 2, -10); return;
   }
   const u = player.userData;
-  if (!G.exploded) player.visible = cam.view !== 'fp' && !u.hidden;
-  if (cam.view === 'fp') {
+  const fpOn = cam.view === 'fp' && G.mode !== 'cine' && !(G.cine && G.cine.camOverride);
+  if (G.mode === 'cabin' && cabinCamera(dt, fpOn)) return;
+  if (!G.exploded) player.visible = !fpOn && !u.hidden;
+  if (fpOn) {
     const eye = (u.crouch ? 1.2 : 1.62) + u.y, bob = u.grounded && u.speed > .5 ? Math.sin(G.t * (u.sprint ? 14 : 9)) * .035 : 0;
     let fx = 0, fy = 0;
     if (S && S.integrity < 40 && G.mode === 'play') { fx = (Math.random() - .5) * .03; fy = (Math.random() - .5) * .03; }
@@ -1716,7 +1718,7 @@ function drawRadar(obj) {
 
 const stomLbl = i => i > 70 ? ['Estables', '#3ddc84'] : i > 40 ? ['Inquietas', '#ffb020'] : i > 15 ? ['Fugas ácidas', '#ff7a1a'] : ['¡A PUNTO DE ESTALLAR!', '#ff3b3b'];
 function hudUpdate() {
-  if (!S || !S.cargo || G.mode === 'title') return;
+  if (!S || !S.cargo || G.mode === 'title' || G.mode === 'cine' || G.mode === 'cabin') return;
   const u = player.userData;
   const t = Math.max(S.time, 0);
   const c = $('clock'); c.textContent = `${Math.floor(t / 60)}:${String(Math.floor(t) % 60).padStart(2, '0')}`;
@@ -1764,6 +1766,420 @@ function hudUpdate() {
   objMarker.visible = showMarker; objMarker.position.set(obj.x, 3.2 + Math.sin(G.t * 3) * .3, obj.z); objMarker.rotation.y = G.t * 2;
 }
 
+/* ==========================================================
+   MÚSICA SEGÚN LA SITUACIÓN
+   ========================================================== */
+initMusic(ac, (() => { try { return localStorage.getItem('simulator.mute') === '1'; } catch (e) { return false; } })());
+let musicOn = false;
+const unlockMusic = () => { if (musicOn) return; musicOn = true; musicStart(); };
+['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, unlockMusic, { capture:true, passive:true }));
+function refreshMute() { const b = $('btnMute'); if (b) b.textContent = music.muted ? '🔇' : '🔊'; }
+function toggleMute() { setMuted(!music.muted); try { localStorage.setItem('simulator.mute', music.muted ? '1' : '0'); } catch (e) {} refreshMute(); }
+$('btnMute').onclick = toggleMute; refreshMute();
+addEventListener('keydown', e => { if (e.code === 'KeyM' && !e.repeat && !$('admin').classList.contains('on')) toggleMute(); });
+
+let adrHold = 0;
+/* tranquilo: menús, tiendas, escondido, cabina · suspenso: sigilo · adrenalina: persecución, disparos, últimos segundos */
+function updateMood(dt) {
+  let m = 'calm';
+  if (G.mode === 'cine' || G.mode === 'cabin') m = (G.cine && G.cine.mood) || 'calm';
+  else if (G.mode === 'over') m = G.endMood || 'sad';
+  else if (G.mode === 'play' && S && player) {
+    const u = player.userData, mk = G.miniKind;
+    const hot = G.chasing || GUARDS.some(g => g.aiming) || (DRONE && DRONE.sees) || S.time <= 12 || S.life <= 10 || mk === 'struggle' || mk === 'cramp';
+    if (hot) adrHold = 3; else adrHold = Math.max(0, adrHold - dt);
+    if (G.seen || S.heat >= 8 || G.chasing) G.safeT = 0; else G.safeT = (G.safeT || 0) + dt;
+    if (adrHold > 0) m = 'adrenaline';
+    else if (G.inZone && !mk) m = 'calm';
+    else if (u.hidden && !S.compromised) m = 'calm';
+    else if (G.safeT > 5 && !mk) m = 'calm';
+    else m = 'suspense';
+    music.intensity = clamp(S.heat / 100 + (S.life < lifeBase() * .4 ? .25 : 0) + (mk ? .2 : 0), 0, 1);
+  }
+  setMood(m);
+}
+
+/* ==========================================================
+   PASARELA, CABINA Y SECUENCIA DE ABORDAJE
+   ========================================================== */
+const CAB = { x:2000, z:0, hw:2.5, h:2.9 };
+const SEATX = [-2.10, -1.48, -0.86, 0.86, 1.48, 2.10];
+const rowZ = r => CAB.z + 10 - r * 1.7;
+let cabin = null, gateAgent = null, WT = null;
+const CABP = [], CABDECOR = [], boarders = [];
+
+function buildBridge() {
+  const z0 = -87.5, z1 = -69;
+  deco(-2.5, z0, 2.5, z1, .12, 0x555b66, 0);
+  deco(-2.62, z0, -2.5, z1, 2.9, 0xcfd5dd, 0); deco(2.5, z0, 2.62, z1, 2.9, 0xcfd5dd, 0);
+  deco(-2.62, z0, 2.62, z1, .14, 0xcfd5dd, 2.9);
+  deco(-2.52, z0 + 1, -2.48, z1 - 1, .8, 0x9fd6ee, 1.3, { emissive:0x4a9fd0, emissiveIntensity:.7 });
+  deco(2.48, z0 + 1, 2.52, z1 - 1, .8, 0x9fd6ee, 1.3, { emissive:0x4a9fd0, emissiveIntensity:.7 });
+  deco(-.25, z0 + .5, .25, z1 - .5, .04, 0xffffff, 2.86, { emissive:0xffffff, emissiveIntensity:1.2 });
+  deco(-1.1, -87.6, 1.1, -87.5, 2.3, 0x14181f, .2);
+  label('➜ AVIÓN', 0, 3.6, -69.4, 5, '#3ddc84');
+}
+
+function mkWinTex(kind) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128; const x = c.getContext('2d');
+  if (kind === 'run') {
+    const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#1d3a6b'); g.addColorStop(.42, '#e39a68'); g.addColorStop(.43, '#2b2e36'); g.addColorStop(1, '#14161b');
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    x.fillStyle = '#ffe9a0'; x.fillRect(12, 96, 34, 5); x.fillRect(76, 96, 34, 5);
+    x.fillStyle = '#ffffff'; x.fillRect(40, 112, 22, 4); x.fillRect(104, 112, 22, 4);
+    x.fillStyle = '#6fd0ff'; for (let i = 0; i < 4; i++) x.fillRect(8 + i * 32, 62, 3, 3);
+    x.fillStyle = '#ff5a3a'; x.fillRect(20, 68, 3, 3); x.fillRect(84, 66, 3, 3);
+  } else {
+    const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#2f6fc4'); g.addColorStop(1, '#b8e3ff'); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    [[20, 40, 22], [70, 85, 26], [105, 30, 16], [45, 105, 20]].forEach(([cx, cy, r]) => [-128, 0, 128].forEach(o => { x.beginPath(); x.ellipse(cx + o, cy, r, r * .42, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(cx + o + r * .5, cy - r * .2, r * .6, r * .32, 0, 0, 7); x.fill(); }));
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
+}
+
+const markTex = {};
+function markSprite(txt) {
+  if (!markTex[txt]) { const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d'); x.font = '64px "Segoe UI Emoji", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 48, 52); markTex[txt] = new THREE.CanvasTexture(c); }
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:markTex[txt], transparent:true, depthWrite:false })); s.scale.set(.55, .55, 1); return s;
+}
+function sitPose(h, y = -.25) { const u = h.userData; u.legL.rotation.x = u.legR.rotation.x = -1.45; u.armL.rotation.x = u.armR.rotation.x = -.5; h.position.y = y; }
+
+function addPax(x, z, o = {}) {
+  const pal = [0xc0392b, 0x2e86c1, 0x27ae60, 0xf39c12, 0x8e44ad, 0xecf0f1, 0x16a085, 0xd35400], rp = a => a[(Math.random() * a.length) | 0];
+  const m = makeHuman({ shirt:o.shirt ?? rp(pal), pants:o.pants ?? rp([0x2c3e50, 0x4a4a4a, 0x7f6a4a]), hair:o.hair ?? rp([0x111111, 0x5a3a1a, 0xc9a24a, 0x888888]), skin:rp([0xe0b48a, 0xc68d62, 0x8d5a3b, 0xf1c9a5]), hat:o.hat, tie:o.tie });
+  m.position.set(x, 0, z); m.rotation.y = o.ang ?? 0; if (o.scale) m.scale.setScalar(o.scale); cabin.add(m); if (!o.stand) sitPose(m);
+  const p = { m, x, z, id:o.id, name:o.name, talk:o.talk, done:false, stand:!!o.stand, sleep:!!o.sleep, ph:Math.random() * 6, marker:null, cleared:false, tw:null };
+  if (o.mark) { p.marker = markSprite(o.mark); p.marker.position.set(0, 2.3 / (o.scale || 1), 0); m.add(p.marker); }
+  (o.talk ? CABP : CABDECOR).push(p); return p;
+}
+
+const TALK = {
+  blocker: () => ({ text:'<p>Un señor intenta meter en el compartimento una maleta del tamaño de un refrigerador. Bloquea el pasillo y suda más que tú.</p><p>—¡Esto cabe, tiene que caber!</p>', opts:[
+    { label:'Ayudarlo a subir la maleta', hint:'+$60 de propina · +50 puntos', act(){ bonus(60, 50); return 'Entre los dos, la maleta entra... a la fuerza. Te da un billete arrugado: "Por si algún día necesitas un abogado".'; } },
+    { label:'Empujar la maleta con el pie', hint:'Pasas rápido, pero con mala fama', act(){ return 'La maleta entra de golpe y algo dentro grita: "¡Mis ukeleles!". Nadie te volverá a dirigir la palabra.'; } },
+    { label:'Esperar con paciencia', hint:'Ni premio ni castigo', act(){ bonus(0, 10); return 'Esperas. El señor acaba solo, jadeando, y te mira con respeto: eres la única persona calmada del avión. Si él supiera.'; } }
+  ] }),
+  nervous: () => ({ text:'<p>Un pasajero agarra el reposabrazos con tanta fuerza que ya no tiene huellas dactilares.</p><p>—Odio volar. ¿Usted no? Está sudando mucho...</p>', opts:[
+    { label:'Calmarlo con humor negro', hint:'+$30 · +30 puntos', act(){ bonus(30, 30); return '"Si nos caemos, al menos no pagaremos equipaje extra". Se ríe tanto que se le pasa el miedo y te da $30 "para tus nervios".'; } },
+    { label:'Fingir que tú también tienes miedo', hint:'+15 puntos', act(){ bonus(0, 15); return 'Os dais la mano. Se siente más raro que reconfortante, pero los dos respiráis mejor.'; } },
+    { label:'Ignorarlo', hint:'', close:true }
+  ] }),
+  kid: () => ({ text:'<p>Un niño te mira fijamente con los ojos muy abiertos.</p><p>—Señor, ¿por qué hace ruido su barriga?</p>', opts:[
+    { label:'"Es un animal muy tímido"', hint:'+20 puntos', act(){ bonus(0, 20); return 'El niño asiente, serio: "Yo también tengo un hámster en la mochila". Prefieres no investigar.'; } },
+    { label:'"Es una cápsula del tiempo"', hint:'+25 puntos', act(){ bonus(0, 25); return '—¿Y cuándo se abre? —En unas horas, así que yo me alejaría. El niño pone cara de entender más de lo que debería.'; } },
+    { label:'Hacerle chitón', hint:'', close:true }
+  ] }),
+  granny: () => ({ text:'<p>Una abuelita con un bolso enorme te sonríe con ternura.</p><p>—Hijo, ¿me ayudas con la bolsa? Tengo galletas.</p>', opts:[
+    { label:'Ayudarla con la bolsa', hint:'+$40 · +40 puntos', act(){ bonus(40, 40); return 'Te da una galleta y una nota: "Sé lo que llevas dentro. Buen provecho". Te guiña un ojo. Parece que la familia está por todas partes.'; } },
+    { label:'Aceptar solo la galleta', hint:'+15 puntos', act(){ bonus(0, 15); return 'La galleta está deliciosa. No quieres pensar de qué es el relleno.'; } },
+    { label:'Declinar con educación', hint:'', close:true }
+  ] }),
+  exec: () => ({ text:'<p>Un ejecutivo ronca con la boca abierta. Su cartera asoma del bolsillo como invitándote a una mala decisión.</p>', opts:[
+    { label:'Dejarlo dormir en paz', hint:'+20 puntos', act(){ bonus(0, 20); return 'Le arreglas la almohada. Tu karma sube un poco; el de tu estómago, no.'; } },
+    { label:'Taparle la boca con una revista', hint:'+10 puntos', act(){ bonus(0, 10); return 'El ronquido cambia a un silbido. Un pasajero cercano te aplaude en silencio.'; } },
+    { label:'Robarle la cartera', hint:'+$100 · -30 puntos (karma)', act(){ bonus(100, -30); return 'Dentro hay $100 y una tarjeta: "Don Chuy · Gerente de pérdidas de inventario". Te la guardas sudando frío.'; } }
+  ] }),
+  mate: () => ({ text:'<p>El pasajero del otro lado del pasillo te mira de reojo.</p><p>—¿Primera vez volando? Pareces nervioso. Respira.</p>', opts:[
+    { label:'Contarle la verdad (medio en broma)', hint:'+$20 · +25 puntos', act(){ bonus(20, 25); return '"Llevo medio kilo de sorpresas en el estómago". Se ríe, cree que bromeas, y te da $20 para un café "por el susto".'; } },
+    { label:'Hablar del clima', hint:'+10 puntos', act(){ bonus(0, 10); return 'Hablan del clima durante tres minutos. Nunca ha existido una conversación más segura.'; } },
+    { label:'Fingir que duermes', hint:'', close:true }
+  ] })
+};
+
+function buildCabin() {
+  const g = new THREE.Group(); scene.add(g); cabin = g;
+  const L = (c, e) => new THREE.MeshStandardMaterial({ color:c, roughness:.85, ...(e || {}) });
+  const box = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(CAB.x + x, y, CAB.z + z); g.add(b); return b; };
+  const HW = CAB.hw, H = CAB.h;
+  box(HW * 2, .1, 28, 0, -.05, 0, L(0x2a3650)); box(.95, .02, 28, 0, .01, 0, L(0x7a2f35));
+  box(HW * 2, .1, 28, 0, H + .05, 0, L(0xe9edf2, { emissive:0xc8ced8, emissiveIntensity:.9 }));
+  box(.3, .03, 26, 0, H - .01, 0, L(0xffffff, { emissive:0xffffff, emissiveIntensity:1.1 }));
+  box(.1, H, 28, -HW - .05, H / 2, 0, L(0xd8d3c7, { emissive:0x4a4640, emissiveIntensity:1 })); box(.1, H, 28, HW + .05, H / 2, 0, L(0xd8d3c7, { emissive:0x4a4640, emissiveIntensity:1 }));
+  box(HW * 2, H, .1, 0, H / 2, 14.05, L(0xcdd2d9)); box(HW * 2, H, .1, 0, H / 2, -14.05, L(0xcdd2d9));
+  box(.8, .5, 26, -HW + .42, H - .62, 0, L(0xeeeae0, { emissive:0x6a665c, emissiveIntensity:1 })); box(.8, .5, 26, HW - .42, H - .62, 0, L(0xeeeae0, { emissive:0x6a665c, emissiveIntensity:1 }));
+  box(HW * 2 - .2, 2.4, .06, 0, 1.4, 13.9, L(0x7d2535));
+  box(.07, 2.2, 1.3, -HW + .015, 1.1, 12.7, L(0x20242c));
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.1), new THREE.MeshBasicMaterial({ color:0xcfe8ff })); door.rotation.y = Math.PI / 2; door.position.set(CAB.x - HW + .06, 1.05, CAB.z + 12.7); g.add(door);
+  label('SALIDA', CAB.x - HW + .2, 2.6, CAB.z + 12.7, 2.2, '#3ddc84');
+  label('34C →', CAB.x, 2.65, CAB.z - 7.2, 2.2, '#f5c518');
+
+  // asientos (instanciados)
+  const seatG = new THREE.BoxGeometry(.6, .14, .58), backG = new THREE.BoxGeometry(.6, .82, .12), headG = new THREE.BoxGeometry(.4, .2, .14), N = 14 * 6;
+  const iBase = new THREE.InstancedMesh(seatG, L(0x2c4d8f), N), iBack = new THREE.InstancedMesh(backG, L(0x2c4d8f), N), iHead = new THREE.InstancedMesh(headG, L(0xf0f0f0), N), d = new THREE.Object3D(); let i = 0;
+  for (let r = 0; r < 14; r++) for (const sx of SEATX) {
+    const x = CAB.x + sx, z = rowZ(r);
+    d.position.set(x, .45, z); d.updateMatrix(); iBase.setMatrixAt(i, d.matrix);
+    d.position.set(x, .95, z - .3); d.updateMatrix(); iBack.setMatrixAt(i, d.matrix);
+    d.position.set(x, 1.47, z - .3); d.updateMatrix(); iHead.setMatrixAt(i, d.matrix); i++;
+  }
+  [iBase, iBack, iHead].forEach(m => { m.instanceMatrix.needsUpdate = true; m.frustumCulled = false; g.add(m); });
+
+  // ventanillas: la imagen exterior se desplaza para dar sensación de velocidad
+  const tL = mkWinTex('run'), tR = tL.clone(); tR.needsUpdate = true; const sL = mkWinTex('sky'), sR = sL.clone(); sR.needsUpdate = true;
+  const mL = new THREE.MeshBasicMaterial({ map:tL }), mR = new THREE.MeshBasicMaterial({ map:tR });
+  WT = { tL, tR, sL, sR, mL, mR };
+  const wgL = new THREE.PlaneGeometry(.44, .58); wgL.rotateY(Math.PI / 2); const wgR = new THREE.PlaneGeometry(.44, .58); wgR.rotateY(-Math.PI / 2);
+  const winL = new THREE.InstancedMesh(wgL, mL, 14), winR = new THREE.InstancedMesh(wgR, mR, 14), frm = new THREE.InstancedMesh(new THREE.BoxGeometry(.05, .72, .58), L(0x20242c), 28);
+  for (let r = 0; r < 14; r++) {
+    d.position.set(CAB.x - HW + .04, 1.35, rowZ(r)); d.updateMatrix(); winL.setMatrixAt(r, d.matrix);
+    d.position.set(CAB.x + HW - .04, 1.35, rowZ(r)); d.updateMatrix(); winR.setMatrixAt(r, d.matrix);
+    d.position.set(CAB.x - HW, 1.35, rowZ(r)); d.updateMatrix(); frm.setMatrixAt(r, d.matrix);
+    d.position.set(CAB.x + HW, 1.35, rowZ(r)); d.updateMatrix(); frm.setMatrixAt(14 + r, d.matrix);
+  }
+  [winL, winR, frm].forEach(m => { m.instanceMatrix.needsUpdate = true; m.frustumCulled = false; g.add(m); });
+
+  // pasajeros con los que se puede hablar
+  const blk = addPax(CAB.x, CAB.z + 7.4, { id:'blocker', stand:true, ang:0, name:'Pasajero con maleta gigante', talk:TALK.blocker, shirt:0x8e44ad, hat:0x884422, mark:'💬' });
+  const sc = new THREE.Mesh(new THREE.BoxGeometry(1.1, .75, .45), L(0x5a3a2a)); sc.position.set(0, 2.5, .15); blk.m.add(sc); blk.suit = sc;
+  addPax(CAB.x + SEATX[3], rowZ(3), { id:'nervous', name:'Pasajero nervioso', talk:TALK.nervous, mark:'💬' });
+  addPax(CAB.x + SEATX[2], rowZ(6), { id:'kid', name:'Niño curioso', talk:TALK.kid, scale:.72, mark:'💬' });
+  addPax(CAB.x + SEATX[3], rowZ(8), { id:'granny', name:'Abuelita de las galletas', talk:TALK.granny, hair:0xdddddd, shirt:0xb06fa0, mark:'💬' });
+  addPax(CAB.x + SEATX[2], rowZ(9), { id:'exec', name:'Ejecutivo dormido', talk:TALK.exec, sleep:true, tie:true, shirt:0x1c2230, pants:0x1c2230, mark:'💤' });
+  addPax(CAB.x + SEATX[3], rowZ(11), { id:'mate', name:'Pasajero del pasillo', talk:TALK.mate, mark:'💬' });
+  // azafata
+  const att = addPax(CAB.x - 1.5, CAB.z + 12.2, { id:'att', stand:true, ang:Math.PI / 2, shirt:0xb32525, pants:0x2a2a35, hat:0xb32525, hair:0x3a2414 }); cabin.att = att;
+  // relleno según la calidad gráfica
+  const taken = new Set(['11:2', '11:3', '3:3', '6:2', '8:3', '9:2']), nDec = { low:4, med:7, high:11 }[QUALITY] || 7; let k = 0, guard = 0;
+  while (k < nDec && guard++ < 300) { const r = (Math.random() * 14) | 0, s = (Math.random() * 6) | 0, key = r + ':' + s; if (r < 1 || taken.has(key)) continue; taken.add(key); addPax(CAB.x + SEATX[s], rowZ(r), {}); k++; }
+
+  // agente de la puerta de embarque (en la terminal)
+  gateAgent = makeHuman({ shirt:0xb32525, pants:0x2a2a35, capCol:0xb32525, hair:0x3a2414 }); gateAgent.position.set(2.6, 0, -65.2); scene.add(gateAgent);
+}
+
+/* ---------- utilidades de la secuencia ---------- */
+function chapter(t, s) { const e = $('chapter'); e.innerHTML = t + (s ? '<small>' + s + '</small>' : ''); e.classList.remove('show'); void e.offsetWidth; e.classList.add('show'); }
+const showSkip = on => { $('btnSkip').style.display = on ? 'block' : 'none'; };
+$('btnSkip').onclick = () => { if (G.cine) G.cine.skip = true; };
+const cineWait = ms => new Promise(res => { const t0 = performance.now(), iv = setInterval(() => { if ((G.cine && G.cine.skip) || performance.now() - t0 >= ms) { clearInterval(iv); res(); } }, 40); });
+function walkTo(x, z, speed) { return new Promise(res => { const c = G.cine, u = player.userData; if (c.skip) { u.px = x; u.pz = z; return res(); } c.walk = { x, z, speed, res }; }); }
+async function blackout(text, mid) { const f = $('fade'); f.textContent = text; f.classList.add('on'); await sleep(450); if (mid) await mid(); await sleep(500); f.classList.remove('on'); await sleep(350); }
+function bonus(m, s) {
+  S.bonusMoney = (S.bonusMoney || 0) + m; S.bonusScore = (S.bonusScore || 0) + s; if (m > 0) S.tips = (S.tips || 0) + m;
+  if (m > 0) { popText('+$' + m, '#7ed957'); stinger('coin', 4); } else if (s > 0) popText('+' + s + ' pts', '#f5c518');
+}
+function shot(px, py, pz, lx, ly, lz, k = 2) { const c = G.cine; c.cam = { p:new THREE.Vector3(px, py, pz), l:new THREE.Vector3(lx, ly, lz), k }; c.camOverride = true; }
+
+function spawnBoarders() {
+  boarders.forEach(b => scene.remove(b.m)); boarders.length = 0;
+  const pal = [0xc0392b, 0x2e86c1, 0x27ae60, 0xf39c12, 0x8e44ad];
+  for (let i = 0; i < 5; i++) {
+    const m = makeHuman({ shirt:pal[i], pants:0x2c3e50, hair:[0x111111, 0x5a3a1a, 0xc9a24a][i % 3], skin:[0xe0b48a, 0xc68d62, 0xf1c9a5][i % 3], pack:i % 2 === 0 });
+    m.position.set(i % 2 ? .7 : -.7, 0, -67.5 - i * 2.6); m.rotation.y = Math.PI; scene.add(m); boarders.push({ m, sp:2.2 + Math.random() * .4 });
+  }
+}
+function boardersUpdate(dt) {
+  for (let i = boarders.length - 1; i >= 0; i--) { const b = boarders[i]; b.m.position.z -= b.sp * dt; animHuman(b.m, b.sp, dt, false); if (b.m.position.z < -86.6) { scene.remove(b.m); boarders.splice(i, 1); } }
+  if (gateAgent && G.mode !== 'title') { const u = player && player.userData; if (u && G.mode === 'cine') gateAgent.rotation.y = Math.atan2(u.px - gateAgent.position.x, u.pz - gateAgent.position.z); animHuman(gateAgent, 0, dt, false); }
+}
+
+/* ---------- jugador en pasarela y cabina ---------- */
+function cabinPlayer(dt) {
+  const u = player.userData, c = G.cine || {}; let sp = 0;
+  u.hidden = null;
+  if (c.seated) { u.vx = u.vz = 0; u.legL.rotation.x = u.legR.rotation.x = -1.45; u.armL.rotation.x = u.armR.rotation.x = -.5; player.position.set(u.px, -.25, u.pz); player.rotation.y = 0; player.scale.y = 1; return; }
+  if (c.walk) {
+    const w = c.walk, dx = w.x - u.px, dz = w.z - u.pz, d = Math.hypot(dx, dz), st = w.speed * dt;
+    if (c.skip || d <= st) { u.px = w.x; u.pz = w.z; const r = w.res; c.walk = null; if (r) r(); }
+    else { u.px += dx / d * st; u.pz += dz / d * st; u.ang = lerpAng(u.ang, Math.atan2(dx, dz), Math.min(1, dt * 10)); sp = w.speed; }
+  } else if (G.mode === 'cabin' && !G.busy && !c.locked) {
+    let ix = ((keys.KeyD || keys.ArrowRight) ? 1 : 0) - ((keys.KeyA || keys.ArrowLeft) ? 1 : 0), iz = ((keys.KeyS || keys.ArrowDown) ? 1 : 0) - ((keys.KeyW || keys.ArrowUp) ? 1 : 0), an = 0, mx = 0, mz = 0;
+    if (TOUCH.mag > .08) { ix += TOUCH.x; iz += TOUCH.z; an = TOUCH.mag; }
+    let spd = 2.4;
+    if (ix || iz) {
+      const l = Math.hypot(ix, iz), nx = ix / l, nz = iz / l, yaw = cam.view === 'fp' ? cam.yaw : 0;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+      mx = fx * -nz + rx * nx; mz = fz * -nz + rz * nx;
+      if (keys.ShiftLeft || keys.ShiftRight || an > .9) spd = 3.4; else if (an) spd = 2.4 * an / .9;
+    }
+    const k = Math.min(1, dt * 10); u.vx += (mx * spd - u.vx) * k; u.vz += (mz * spd - u.vz) * k;
+    const blk = CABP.find(p => p.id === 'blocker'), minZ = blk && !blk.cleared ? blk.z + .95 : CAB.z - 13;
+    u.px = clamp(u.px + u.vx * dt, CAB.x - .4, CAB.x + .4); u.pz = clamp(u.pz + u.vz * dt, minZ, CAB.z + 13.5);
+    sp = Math.hypot(u.vx, u.vz); if (sp > .3) u.ang = lerpAng(u.ang, Math.atan2(u.vx, u.vz), Math.min(1, dt * 12));
+  } else { u.vx *= .8; u.vz *= .8; }
+  player.position.set(u.px, 0, u.pz); player.rotation.y = u.ang; player.scale.y = 1;
+  const st2 = animHuman(player, sp, dt, false);
+  if (sp > .8 && st2 !== lastStride) { lastStride = st2; beep(85, .04, 'triangle', .03); }
+  u.speed = sp; u.sprint = false; u.grounded = true; u.y = 0;
+}
+
+function cabinCamera(dt, fpOn) {
+  const c = G.cine, u = player.userData;
+  if (c.camOverride && c.cam) {
+    if (!c.cp) { c.cp = camera.position.clone(); c.cl = new THREE.Vector3(u.px, 1.2, u.pz); }
+    const k = Math.min(1, dt * c.cam.k); c.cp.lerp(c.cam.p, k); c.cl.lerp(c.cam.l, k);
+    let sx = 0, sy = 0; if (c.shake > 0) { sx = (Math.random() - .5) * c.shake * .05; sy = (Math.random() - .5) * c.shake * .05; }
+    camera.position.set(c.cp.x + sx, c.cp.y + sy, c.cp.z); camera.lookAt(c.cl); player.visible = true; return true;
+  }
+  if (fpOn) { player.visible = false; return false; }
+  cam.yaw = 0; player.visible = true;
+  const cx = CAB.x + (u.px - CAB.x) * .6;
+  camera.position.set(cx, 1.95, Math.min(CAB.z + 13.6, u.pz + 3.3)); camera.lookAt(cx, 1.3, u.pz - 3); return true;
+}
+
+function cabinTarget(u) {
+  const c = G.cine; if (c.locked) return null;
+  let best = null, bd = 1e9;
+  for (const p of CABP) {
+    if (p.done) continue;
+    const d = Math.hypot((u.px - p.x) * .6, u.pz - p.z);
+    if (d < 1.9 && d < bd) { bd = d; best = { type:'pax', p, label:'Hablar con ' + p.name }; }
+  }
+  const blk = CABP.find(p => p.id === 'blocker');
+  if (!best && (!blk || blk.cleared) && Math.abs(u.pz - rowZ(11)) < 1.1) best = { type:'seat', label:'Sentarte · asiento 34C' };
+  return best;
+}
+
+function cabinUpdate(dt) {
+  const c = G.cine; if (!c || !WT) return; const u = player.userData, t = G.t;
+  c.v += (c.vTarget - c.v) * Math.min(1, dt * 1.2); c.scroll += c.v * dt;
+  WT.tL.offset.x = -c.scroll; WT.tR.offset.x = c.scroll; WT.sL.offset.x = -c.scroll * .4; WT.sR.offset.x = c.scroll * .4;
+  if (c.shake > 0 && c.phase !== 'takeoff') c.shake = Math.max(0, c.shake - dt);
+  for (const p of CABP.concat(CABDECOR)) {
+    const h = p.m.userData;
+    if (p.tw) {
+      const w = p.tw, dx = w.x - p.m.position.x, dz = w.z - p.m.position.z, d = Math.hypot(dx, dz), st = 1.5 * dt;
+      if (d <= st) { p.m.position.x = w.x; p.m.position.z = w.z; p.m.rotation.y = 0; sitPose(p.m); p.tw = null; p.stand = false; p.cleared = true; p.x = w.x; p.z = w.z; }
+      else { p.m.position.x += dx / d * st; p.m.position.z += dz / d * st; p.m.rotation.y = lerpAng(p.m.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); animHuman(p.m, 1.5, dt, false); }
+    } else if (p.stand && p.id === 'blocker' && !p.done) {
+      h.armL.rotation.x = h.armR.rotation.x = -2.9 + Math.sin(t * 5) * .12; if (p.suit) p.suit.position.y = 2.5 + Math.sin(t * 5 + 1) * .05; h.torso.rotation.z = Math.sin(t * 4) * .05;
+    } else if (p.stand && p.id === 'att') { animHuman(p.m, 0, dt, false); h.armR.rotation.x = -2.3 + Math.sin(t * 6) * .35; }
+    else if (!p.stand && p.sleep) { h.head.rotation.x = .5 + Math.sin(t * 1.6) * .05; }
+    else if (!p.stand) h.head.rotation.y = Math.sin(t * .6 + p.ph) * .35;
+    if (p.marker) { p.marker.visible = !p.done; p.marker.position.y = 2.3 / p.m.scale.y + Math.sin(t * 3 + p.ph) * .05; }
+  }
+  if (G.mode !== 'cabin') return;
+  c.target = cabinTarget(u);
+  const pr = $('prompt'), ob = $('obj'), free = !G.busy && !c.locked;
+  if (free && c.target) { pr.style.display = 'block'; pr.innerHTML = `<b>${isTouch ? '✋' : 'E'}</b>${c.target.label}`; } else pr.style.display = 'none';
+  const blk = CABP.find(p => p.id === 'blocker');
+  ob.style.display = free ? 'block' : 'none';
+  ob.textContent = blk && !blk.cleared ? 'Un pasajero bloquea el pasillo: habla con él' : `Camina por el pasillo hasta tu asiento 34C · charla con los pasajeros para ganar propinas (propinas: $${S.bonusMoney || 0})`;
+  updateTouchUI(S, { act:free && !!c.target, hide:false, actLabel:c.target && c.target.type === 'seat' ? 'Sentarte' : 'Hablar' });
+  if (free && c.target && pressed.KeyE) interact(c.target);
+}
+
+async function interact(tg) {
+  const c = G.cine, u = player.userData; G.busy = true; u.vx = u.vz = 0;
+  if (tg.type === 'seat') { await takeoffSequence(); return; }
+  const p = tg.p, sc = p.talk();
+  const o = await dialog({ title:p.name.toUpperCase(), text:sc.text, opts:sc.opts });
+  if (o.close) { G.busy = false; return; }
+  const msg = o.act ? o.act(p) : '';
+  p.done = true; S.helped = (S.helped || 0) + 1;
+  if (p.id === 'blocker') { p.tw = { x:CAB.x + SEATX[3], z:rowZ(2) }; p.m.userData.armL.rotation.x = p.m.userData.armR.rotation.x = 0; p.m.remove(p.suit); }
+  if (msg) sub(msg, 7000);
+  G.busy = false;
+}
+
+async function attendantGreeting() {
+  const o = await dialog({ title:'AZAFATA', text:'<p>Una azafata con sonrisa de plástico te recibe en la puerta de la cabina.</p><p>—Bienvenido a bordo. Su asiento es el <b>34C</b>, al fondo, pasillo izquierdo. ¿Algo que declarar?</p><p class="dimtxt">Camina con WASD o las flechas (joystick en el móvil). Habla con los pasajeros con E: algunos dan propinas.</p>', opts:[
+    { label:'"Nada, solo mi estómago"', hint:'+10 puntos', act(){ bonus(0, 10); return 'La azafata suelta una risa nerviosa. "Qué honesto... Que tenga buen viaje."'; } },
+    { label:'Sonreír sin decir nada', hint:'', act(){ return 'Sonríes tan rígido que la azafata da un paso atrás. "Por el pasillo, por favor."'; } }
+  ] });
+  if (o.act) sub(o.act(), 5000);
+}
+
+/* ---------- secuencia completa ---------- */
+async function victory() {
+  const u = player.userData;
+  G.mode = 'cine'; G.busy = true; G.dlgEsc = null;
+  const c = G.cine = { mood:'win', walk:null, skip:false, v:0, vTarget:0, scroll:0, shake:0, phase:'outside', locked:true, seated:false, camOverride:false, cp:null, target:null };
+  closeDialog(); $('mini').classList.remove('on');
+  document.body.classList.add('cine', 'bars'); showSkip(true);
+  await blackout('✈ PUERTA 27', async () => {
+    if (u.hidden) unhidePlayer();
+    u.px = 0; u.pz = -58.8; u.vx = u.vz = 0; u.ang = Math.PI; u.y = 0; u.crouch = false; player.visible = true; player.scale.y = 1;
+    cam.yaw = 0; cam.pitch = .12; cam.dist = 4.6; cam.x = u.px; cam.y = 2.15; cam.z = u.pz + 4.57;
+    spawnBoarders();
+  });
+  chapter('ABORDANDO', 'Puerta 27 · Vuelo a Ámsterdam');
+  await walkTo(0, -63.4, 3.4);
+  const tk = $('ticket');
+  tk.innerHTML = '<h4>✈ BOARDING PASS</h4><div>PASAJERO: LA MULA<br>VUELO 027 · MÉXICO → ÁMSTERDAM<br>PUERTA 27 · ASIENTO 34C</div><div class="ok">✔ ESCANEADO</div>';
+  tk.classList.add('on'); stinger('chime');
+  sub('<b>Agente:</b> "Buen viaje, señor. Disfrute del vuelo... y de lo que lleve dentro."', 4200);
+  await cineWait(2300); tk.classList.remove('on');
+  await walkTo(0, -69.2, 3.2);
+  chapter('AL AVIÓN', 'Sigue a los demás pasajeros');
+  await walkTo(0, -85.8, 3.6);
+  sub('<b>Azafata:</b> "¡Bienvenido a bordo!"', 2200); await cineWait(900);
+  await blackout('✈ A BORDO', async () => {
+    G.mode = 'cabin'; c.phase = 'cabin'; c.skip = false; c.mood = 'calm'; showSkip(false);
+    document.body.classList.remove('cine', 'bars'); document.body.classList.add('cabin');
+    u.px = CAB.x; u.pz = CAB.z + 12.9; u.vx = u.vz = 0; u.ang = Math.PI; cam.yaw = 0; cam.fp = 0; c.cp = null;
+    renderer.shadowMap.autoUpdate = false; boarders.forEach(b => scene.remove(b.m)); boarders.length = 0;
+  });
+  chapter('A BORDO', 'Asiento 34C · pasillo izquierdo');
+  await cineWait(900);
+  await attendantGreeting();
+  c.locked = false; G.busy = false;
+}
+
+async function takeoffSequence() {
+  const c = G.cine, u = player.userData;
+  c.locked = true; c.phase = 'sit'; G.busy = true; $('prompt').style.display = 'none'; $('obj').style.display = 'none';
+  if ((S.helped || 0) >= 4) { S.socBonus = 50; bonus(50, 100); sub('<b>¡Alma de la fiesta!</b> Hablaste con medio avión: bonus extra.', 3500); }
+  const seatX = CAB.x + SEATX[2], seatZ = rowZ(11);
+  await walkTo(seatX, seatZ, 1.9); u.ang = 0; c.seated = true;
+  beep(1700, .04, 'square', .05); setTimeout(() => beep(1300, .05, 'square', .05), 160);
+  document.body.classList.add('bars'); c.skippable = true; c.phase = 'takeoff'; showSkip(true);
+  shot(CAB.x + .25, 1.55, seatZ + 2.1, seatX, 1.0, seatZ, 2.5);
+  chapter('ASIENTO 34C', 'Cinturón abrochado');
+  sub('<b>Tu estómago:</b> "Gluuurp." <i>(Calma, pequeñas. Ya casi.)</i>', 3600);
+  await cineWait(2600);
+  c.mood = 'epic'; music.intensity = .15; stinger('ding');
+  sub('<b>Capitán:</b> "Señores pasajeros, bienvenidos al vuelo 027 con destino Ámsterdam. Tripulación, preparados para el despegue."', 5200);
+  await cineWait(3400);
+  shot(CAB.x - 1.45, 1.42, seatZ + .05, CAB.x - 2.5, 1.38, seatZ - .02, 1.6);
+  roar(8, .55); c.vTarget = .25; music.intensity = .35;
+  sub('<i>Los motores rugen. La pista empieza a correr bajo la ventanilla...</i>', 3200);
+  await cineWait(1700); c.vTarget = 1.5; c.shake = 1.2; music.intensity = .6;
+  await cineWait(2400); c.vTarget = 2.6; c.shake = 2.4; music.intensity = .85;
+  sub('<b>¡DESPEGANDO!</b>', 1800);
+  await cineWait(1900);
+  WT.mL.map = WT.sL; WT.mR.map = WT.sR; WT.mL.needsUpdate = WT.mR.needsUpdate = true; c.vTarget = .5; c.shake = 3; music.intensity = 1;
+  chapter('¡DESPEGASTE!', 'Rumbo a Ámsterdam'); stinger('clap', 3.4); stinger('ding');
+  if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 120]);
+  shot(CAB.x - 1.2, 1.45, seatZ + .35, CAB.x - 2.5, 1.38, seatZ - .02, 1.2);
+  sub('<b>Pasajeros:</b> "¡Bravooo!" <i>(Aplauden. Tú aplaudes también, con las manos temblorosas.)</i>', 4200);
+  await cineWait(3600);
+  await winScreen();
+}
+
+function winScreen() {
+  const c = G.cine; showSkip(false); document.body.classList.remove('cabin', 'bars'); document.body.classList.add('cine'); $('ticket').classList.remove('on'); $('sub').classList.remove('on'); clearTimeout(sub.h);
+  S.over = true; G.mode = 'over'; G.busy = true; G.endMood = 'win'; closeDialog();
+  finishRun('win'); const R = G.lastRun;
+  const cr = [[S.time >= P.missionSec * .25, `Tiempo (${fmtS(Math.max(0, S.time))} s)`], [S.life >= lifeBase() * .3, `Cápsulas (${fmtS(Math.max(0, S.life))} s)`], [S.hp >= (P.hp + lvl('hp') * 25) * .7, `Salud (${Math.max(0, Math.round(S.hp))})`]];
+  const stars = Math.max(1, cr.filter(x => x[0]).length), tips = S.tips || 0, soc = S.socBonus || 0;
+  const rows = [['Pago por la mercancía', R.partPay], ['Bonus por tiempo restante', R.partTime]];
+  if (tips) rows.push([`Propinas de los pasajeros (${S.helped || 0} charlas)`, tips]); if (soc) rows.push(['Bonus «alma de la fiesta»', soc]);
+  const e = $('end'); e.className = 'overlay on win';
+  e.innerHTML = `<div id="confetti"></div><div class="reward">
+    <div class="rstamp">MISIÓN CUMPLIDA</div>
+    <h2>✈ ¡DESPEGASTE!</h2>
+    <div class="rstars">${[0, 1, 2].map(i => `<span id="st${i}">★</span>`).join('')}</div>
+    <div class="crit">${cr.map(([ok, t]) => `<span class="${ok ? 'y' : ''}">${ok ? '✔' : '✘'} ${t}</span>`).join('')}</div>
+    <p class="rstory">Desde la ventanilla ves cómo la terminal se hace pequeña. Tu estómago gruñe. Es el sonido más bonito que has oído, y hoy, por fin, nadie lo va a investigar.<br><i>(Fase 3: aduana de destino y entrega... próximamente.)</i></p>
+    <table class="rtab" id="rTab">${rows.map(([a, b]) => `<tr><td>${a}</td><td>+$${b}</td></tr>`).join('')}</table>
+    <div class="rtotal">TOTAL <span id="rMoney">$0</span></div>
+    <div id="rScore" class="rscore">Puntuación <b id="rScoreN">0</b> · Modo <b>${DIFF_LABEL[P.diff]}</b>${G.daily ? ' · reto diario' : ''}<span id="rRec"></span></div>
+    <div class="dimtxt">Dinero permanente total: $${meta.money}</div>
+    <p style="text-align:center;margin-top:14px"><button id="again" style="font:700 20px Impact;letter-spacing:2px;padding:12px 30px">↺ JUGAR OTRA VEZ</button></p></div>`;
+  $('again').onclick = () => location.reload();
+  const conf = $('confetti'), cols = ['#f5c518', '#3ddc84', '#ff3b3b', '#37f0ff', '#ff9fd0', '#ffffff'];
+  for (let i = 0; i < (isTouch ? 55 : 90); i++) { const s = document.createElement('i'); s.style.left = Math.random() * 100 + '%'; s.style.background = cols[i % cols.length]; s.style.animationDuration = (2.6 + Math.random() * 2.4) + 's'; s.style.animationDelay = (-Math.random() * 4) + 's'; conf.appendChild(s); }
+  stinger('fanfare'); if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 220]);
+  for (let i = 0; i < stars; i++) setTimeout(() => { const el = $('st' + i); if (el) el.classList.add('on'); stinger('coin', 2 + i * 3); }, 900 + i * 450);
+  const trs = [...document.querySelectorAll('#rTab tr')]; trs.forEach((tr, i) => setTimeout(() => { tr.classList.add('on'); stinger('coin', i * 2); }, 1500 + i * 520));
+  const t0 = 1500 + trs.length * 520 + 300;
+  const count = (id, to, ms, fmt) => { const el = $(id), st = performance.now(); let last = -1; const f = () => { const k = Math.min(1, (performance.now() - st) / ms), v = Math.round(to * (1 - Math.pow(1 - k, 3))); el.textContent = fmt(v); const tick = Math.floor(k * 12); if (tick !== last && k < 1) { last = tick; stinger('coin', 4 + (tick % 6)); } if (k < 1) requestAnimationFrame(f); }; f(); };
+  setTimeout(() => count('rMoney', R.money, 1700, v => '$' + v), t0);
+  setTimeout(() => count('rScoreN', R.score, 1700, v => String(v)), t0 + 1700);
+  if (R.rec) setTimeout(() => { $('rRec').innerHTML = ' · 🏆 <b class="rrec">¡NUEVO RÉCORD!</b>'; stinger('stamp'); }, t0 + 3500);
+}
+
+
 let lastFrame = performance.now(), fpsT = 0, fpsN = 0, tierNow = QUALITY;
 function applyTier(t) {
   const dpr = devicePixelRatio || 1;
@@ -1780,12 +2196,14 @@ function adaptQuality(rawDt) {
 }
 function stepSim(dt) {
   if (G.paused) return;
-  if (pressed.KeyV && G.mode === 'play') toggleView();
+  if (pressed.KeyV && (G.mode === 'play' || G.mode === 'cabin')) toggleView();
   G.t += dt;
   mazeUpdate(dt); itemsUpdate(dt);
   worldUpdate(dt); pickupsUpdate(dt);
   if (player) { playerUpdate(dt); guardsUpdate(dt); dogsUpdate(dt); droneUpdate(dt); }
   if (G.mode === 'play') clockTick(dt);
+  if (G.mode === 'cine' || G.mode === 'cabin') cabinUpdate(dt);
+  boardersUpdate(dt); updateMood(dt);
   for (const k in pressed) pressed[k] = false;
   updateCamera(dt); hudUpdate();
 }
@@ -1798,5 +2216,5 @@ function loop() {
 
 buildWorld(); buildActors(); loop();
 
-window.__dbg = { cam, camera, toggleView, P, cfg, MZ, ROWS, LDOORS, SMOKES, DECOYS, get DRONE() { return DRONE; }, useItem, rebuildNav, resetMaze, doShift, applyArmed, setArmed, flow: (x, z) => flowDir(routeField, gridR, x, z), nav: () => ({ gridG, gridD, gridR, routeField, cellIdx, bfs }),
+window.__dbg = { board:{ CAB, CABP, CABDECOR, victory, interact, takeoffSequence, winScreen, rowZ, SEATX, boarders, get cabin() { return cabin; } }, music, setMood, cam, camera, toggleView, P, cfg, MZ, ROWS, LDOORS, SMOKES, DECOYS, get DRONE() { return DRONE; }, useItem, rebuildNav, resetMaze, doShift, applyArmed, setArmed, flow: (x, z) => flowDir(routeField, gridR, x, z), nav: () => ({ gridG, gridD, gridR, routeField, cellIdx, bfs }),
   sim: (secs, dt = .05) => { for (let i = 0; i < Math.round(secs / dt); i++) stepSim(dt); }, PICKUPS, keys, pressed, DOGS, NPCS, HIDES, COLL, startChase, startDogHunt, S: () => S, G, player: () => player, ZONES, TRIGS, GUARDS, newState, CARGO, METHOD, PROFILE, meta, finishRun, toggleAdmin };

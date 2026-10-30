@@ -29,6 +29,31 @@ Todos los valores se pueden cambiar en el **panel de administración** (ver abaj
 - **Progresión:** ganas dinero permanente en cada partida y lo gastas en la **Tienda** (más vida, chaleco, bolsa táctica, zapatillas).
 - **Récords** por modo y **reto diario** (el mismo laberinto para todos ese día).
 
+## Abordaje y final
+
+Al pasar el último control en la Puerta 27 empieza una secuencia propia:
+
+1. **Pase de abordar:** el agente escanea tu billete (tarjeta animada en pantalla) y avanzas por la pasarela detrás de otros pasajeros.
+2. **Cabina del avión:** entras por la puerta, la azafata te saluda y caminas por el pasillo hasta tu asiento **34C**. Un pasajero con una maleta gigante bloquea el pasillo hasta que hablas con él.
+3. **Pasajeros:** con **E** (botón ✋ en el móvil) hablas con 6 personajes, con decisiones de humor negro que dan **propinas** y puntos (o te dan mala fama). Si hablas con 4 o más, bonus «alma de la fiesta».
+4. **Despegue:** te sientas, el capitán habla, los motores rugen y por la ventanilla pasa de la pista al cielo. El botón **Saltar ▶** acorta la secuencia.
+5. **Pantalla de premio:** sello «MISIÓN CUMPLIDA», 1 a 3 estrellas (tiempo, cápsulas y salud), desglose del dinero con contador, puntuación, aviso de nuevo récord y confeti.
+
+## Música
+
+Música generada en tiempo real (sin archivos de audio) que cambia según la situación:
+
+| Situación | Música |
+|---|---|
+| Menús, preparación, tiendas y baños, escondido, cabina | **Tranquila** |
+| Sigilo con guardias cerca o sospecha alta | **Suspenso** (latido y reloj; más rápido con más sospecha) |
+| Persecución, disparos, dron, minijuegos de agarre y últimos 10 s | **Adrenalina** |
+| Despegue | **Épica**, que crece hasta el despegue |
+| Victoria | Fanfarria y tema de **celebración** |
+| Derrota | Tema **triste** |
+
+Se silencia con la tecla **M** o con el botón 🔊 (se recuerda la preferencia). La música empieza tras el primer toque o tecla, como exigen los navegadores.
+
 ## Controles
 
 **PC**
@@ -46,6 +71,7 @@ Todos los valores se pueden cambiar en el **panel de administración** (ver abaj
 | 1 / 2 / 3 / 4 | Humo / señuelo / EMP / spray anti-perros |
 | Ratón (arrastrar) o Z / X | Cámara (en primera persona el ratón se captura al hacer clic; Esc lo libera) |
 | Esc | Atrás / cerrar el diálogo (preparación, tienda, récords) |
+| M | Silenciar / activar la música |
 | F2 | Panel de administración |
 | F11 | Pantalla completa (versión de escritorio) |
 
@@ -96,6 +122,7 @@ src/game.js           motor del juego (mundo 3D, IA, minijuegos)
 src/config.js         parámetros, modos de dificultad y panel de administración
 src/meta.js           progresión, tienda, récords y reto diario
 src/touch.js          cámara, joystick y botones táctiles
+src/music.js          música procedural y efectos musicales (Web Audio)
 dist/game.js          versión compilada
 ```
 

@@ -58,6 +58,41 @@
   #sub.on { opacity:1; }
   #help { left:22px; top:14px; text-align:left; font:12px "Segoe UI", sans-serif; color:#cfd8e2; transition:opacity 1s; }
   #xhair { left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:#ffffffcc; box-shadow:0 0 0 2px #0008; display:none; }
+  #sub, #prompt, #obj { z-index:16; }
+  #bar1, #bar2 { position:fixed; left:0; right:0; height:0; background:#000; z-index:14; transition:height .8s; pointer-events:none; }
+  #bar1 { top:0; } #bar2 { bottom:0; }
+  body.bars #bar1, body.bars #bar2 { height:11vh; }
+  body.bars #sub { bottom:13vh; }
+  body.cine .hud:not(#sub), body.cabin .hud:not(#sub):not(#prompt):not(#obj), body.cine #vig, body.cabin #vig, body.cine #touch, body.cine #btnAdminIn, body.cine #btnFullIn, body.cabin #btnAdminIn, body.cabin #titems, body.cabin #tbtns .tb:not(#tAct) { display:none !important; }
+  #chapter { position:fixed; left:0; right:0; top:32%; text-align:center; z-index:17; pointer-events:none; opacity:0; font:400 64px Impact, sans-serif; letter-spacing:8px; text-shadow:0 0 22px #000, 0 3px 3px #000; }
+  #chapter small { display:block; font:600 18px "Segoe UI", sans-serif; letter-spacing:3px; color:#f5e27a; margin-top:6px; }
+  #chapter.show { animation:chap 3.2s ease forwards; }
+  @keyframes chap { 0% { opacity:0; transform:scale(1.15); } 15% { opacity:1; transform:scale(1); } 80% { opacity:1; } 100% { opacity:0; } }
+  #ticket { position:fixed; left:50%; top:15%; transform:translate(-50%,-160%); z-index:17; width:min(430px,86vw); background:linear-gradient(#f4efe1,#e5dcc4); color:#222; border-radius:12px; padding:12px 16px; font:600 14px "Courier New", monospace; box-shadow:0 10px 30px #000a; transition:transform .55s cubic-bezier(.2,1.3,.4,1), opacity .3s; opacity:0; border-left:14px dashed #c0392b; pointer-events:none; }
+  #ticket.on { transform:translate(-50%,0); opacity:1; }
+  #ticket h4 { margin:0 0 6px; font:700 16px "Courier New", monospace; letter-spacing:3px; }
+  #ticket .ok { color:#1d9a52; font-weight:700; font-size:20px; margin-top:6px; }
+  #btnSkip { position:fixed; right:16px; top:12px; z-index:18; display:none; background:#000a; border:1px solid #fff5; }
+  #btnMute { position:fixed; left:92px; top:8px; z-index:45; opacity:.5; padding:2px 8px; font-size:16px; background:#0006; }
+  #end { justify-content:flex-start !important; }
+  .reward { max-width:660px; text-align:center; position:relative; margin:auto; }
+  .rstamp { display:inline-block; margin-top:16px; border:5px solid #3ddc84; color:#3ddc84; font:400 32px Impact, sans-serif; letter-spacing:6px; padding:2px 22px; transform:rotate(-6deg) scale(3); opacity:0; animation:stampIn .45s .2s cubic-bezier(.2,1.6,.4,1) forwards; }
+  @keyframes stampIn { to { transform:rotate(-6deg) scale(1); opacity:1; } }
+  .reward h2 { margin:8px 0 2px !important; }
+  .rstars { font-size:60px; letter-spacing:10px; line-height:1; margin:4px 0; }
+  .rstars span { color:#ffffff30; display:inline-block; } .rstars span.on { color:#f5c518; text-shadow:0 0 20px #f5c518; animation:starPop .5s cubic-bezier(.2,1.8,.4,1); }
+  @keyframes starPop { from { transform:scale(0) rotate(-90deg); } to { transform:scale(1) rotate(0); } }
+  .crit { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:4px 0; }
+  .crit span { font-size:12px; border:1px solid #ffffff33; border-radius:10px; padding:1px 8px; color:#8f9baa; } .crit .y { color:#3ddc84; border-color:#3ddc84; }
+  .rstory { text-align:center !important; font-size:14px; color:#cdd6df; }
+  .rtab { width:100%; border-collapse:collapse; margin:8px 0; text-align:left; } .rtab td { padding:4px 10px; border-bottom:1px solid #ffffff1a; }
+  .rtab td:last-child { text-align:right; color:#7ed957; font-weight:700; }
+  .rtab tr { opacity:0; transform:translateX(-24px); transition:.4s; } .rtab tr.on { opacity:1; transform:none; }
+  .rtotal { font:400 44px Impact, sans-serif; color:#7ed957; letter-spacing:2px; }
+  .rscore { font-size:16px; } .rrec { color:#f5c518; animation:blink .6s infinite; }
+  #confetti { position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+  #confetti i { position:absolute; top:-20px; width:9px; height:16px; opacity:.95; animation:fall linear infinite; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(720deg); } }
   #vig { position:fixed; inset:0; pointer-events:none; transition:background .5s; }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; }
   #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; display:flex; align-items:center; justify-content:center; font:700 40px Impact, sans-serif; color:#fff; transition:opacity .35s; z-index:15; }
@@ -172,6 +207,7 @@
     #dlgO button { padding:8px 10px; } #dlgO small { font-size:11px; }
     #miniT { font-size:24px; margin-top:4px; } #miniH { font-size:13px; margin:4px 0; min-height:30px; } .big { width:150px; height:150px; font-size:16px; } #sweatArea { height:200px; }
     #end h2 { font-size:40px; } #end p { font-size:13px; }
+    #end { padding:10px 14px; } .rstory { font-size:12px; margin:2px 0; } .reward h2 { font-size:34px !important; } .rstars { font-size:36px; } .rtotal { font-size:30px; } .rstamp { font-size:22px; } .rtab td { padding:2px 8px; font-size:13px; } #chapter { font-size:34px; letter-spacing:4px; } #chapter small { font-size:13px; } #btnSkip { top:46px; right:8px; padding:6px 10px; } #ticket { font-size:12px; top:10%; }
   }
 </style>
 </head>
@@ -194,8 +230,13 @@
 <div id="obj" class="hud"></div>
 <div id="prompt" class="hud"></div>
 <div id="sub" class="hud"></div>
-<div id="help" class="hud">WASD o FLECHAS mover · SHIFT correr · ESPACIO saltar · C agacharse · V vista 1ª/3ª persona · Ratón (arrastrar) o Z/X cámara<br>E interactuar · H esconderse · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · F2 admin · F11 pantalla completa<br>Recoge 💊 (+vida) y ⏱ (+misión) · los policías de negro disparan si huyes · el laberinto cambia y las puertas se cierran</div>
+<div id="help" class="hud">M música · WASD o FLECHAS mover · SHIFT correr · ESPACIO saltar · C agacharse · V vista 1ª/3ª persona · Ratón (arrastrar) o Z/X cámara<br>E interactuar · H esconderse · Q pastilla · R spray · 1 humo · 2 señuelo · 3 EMP · 4 anti-perros · F2 admin · F11 pantalla completa<br>Recoge 💊 (+vida) y ⏱ (+misión) · los policías de negro disparan si huyes · el laberinto cambia y las puertas se cierran</div>
 <div id="xhair" class="hud"></div>
+<div id="bar1"></div><div id="bar2"></div>
+<div id="chapter"></div>
+<div id="ticket"></div>
+<button id="btnSkip">Saltar ▶</button>
+<button id="btnMute" title="Música (M)">🔊</button>
 <div id="flash"></div>
 <div id="fade"></div>
 <button id="btnAdminIn" title="Administración (F2)">⚙</button>
