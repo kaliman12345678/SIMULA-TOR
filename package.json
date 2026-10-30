@@ -1,0 +1,21 @@
+{
+  "name": "simula-tor",
+  "version": "1.0.0",
+  "description": "Simula-tor: aventura de sigilo 3D con humor negro (Three.js + Electron)",
+  "main": "main.js",
+  "scripts": {
+    "build": "esbuild src/game.js --bundle --minify --outfile=dist/game.js",
+    "start": "electron .",
+    "serve": "node serve.js",
+    "pack": "electron-packager . Simula-tor --platform=win32 --arch=x64 --out=release --overwrite --ignore=^/node_modules --ignore=^/src --ignore=^/release --ignore=^/tools --ignore=package-lock.json --ignore=.zip$"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
+  },
+  "private": true,
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "@electron/packager": "^20.3.0"
+  }
+}

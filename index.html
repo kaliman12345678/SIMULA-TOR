@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Simula-tor</title>
+<style>
+  :root { --red:#ff3b3b; --amber:#ffb020; --green:#3ddc84; --ar:#37f0ff; --line:#2a323c; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#000; color:#e8edf2; font:15px/1.45 "Segoe UI", system-ui, sans-serif; user-select:none; }
+  #game { position:fixed; inset:0; }
+  .nohud .hud, .nohud #vig { display:none !important; }
+  canvas { display:block; }
+  .hud { position:fixed; pointer-events:none; text-shadow:0 0 4px #000, 0 2px 2px #000; font-family:Impact, "Arial Black", sans-serif; letter-spacing:1px; }
+  #clock { top:10px; left:50%; transform:translateX(-50%); font-size:46px; color:#3ddc84; }
+  #clock.warn { color:#ffb020; } #clock.crit { color:#ff3b3b; animation:blink .6s infinite; }
+  @keyframes blink { 50% { opacity:.35; } }
+  #life { top:62px; left:50%; transform:translateX(-50%); font-size:34px; color:#ff8a4a; }
+  #life.warn { color:#ffb020; } #life.crit { color:#ff3b3b; animation:blink .5s infinite; }
+  .pop { position:fixed; left:50%; top:150px; transform:translateX(-50%); font:400 38px Impact, sans-serif; letter-spacing:2px; text-shadow:0 0 6px #000, 0 2px 2px #000; pointer-events:none; z-index:12; animation:popUp 1.4s ease-out forwards; }
+  @keyframes popUp { from { opacity:1; transform:translate(-50%, 0); } to { opacity:0; transform:translate(-50%, -60px); } }
+  #alert { top:116px; left:50%; transform:translateX(-50%); font-size:26px; display:none; padding:2px 16px; border-radius:6px; }
+  #alert.bad { color:#fff; background:#c01818cc; animation:blink .5s infinite; }
+  #alert.ok { color:#fff; background:#1f7a4acc; }
+  #stars { top:14px; right:22px; font-size:34px; letter-spacing:4px; }
+  #stars .on { color:#f5c518; } #stars .off { color:#ffffff40; }
+  #stars.flash { animation:blink .5s infinite; }
+  #money { top:56px; right:22px; font-size:30px; color:#7ed957; }
+  #inv { top:96px; right:22px; font:600 14px "Segoe UI", sans-serif; color:#dfe6ee; text-align:right; }
+  #radarBox { left:22px; bottom:22px; width:190px; height:190px; }
+  #radar { width:190px; height:190px; border-radius:50%; border:3px solid #111; box-shadow:0 0 0 2px #fff4, 0 4px 14px #000a; background:#0008; }
+  #stom { left:22px; bottom:222px; width:190px; font:700 12px "Segoe UI", sans-serif; }
+  #stom .bar { height:10px; background:#0009; border:1px solid #fff5; border-radius:3px; overflow:hidden; margin-top:3px; }
+  #stom .bar i { display:block; height:100%; width:100%; transition:width .3s; }
+  #sniffBox { left:50%; transform:translateX(-50%); top:80px; width:220px; font:700 12px "Segoe UI", sans-serif; text-align:center; display:none; }
+  #sniffBox .bar { height:9px; background:#0009; border:1px solid #fff5; border-radius:3px; overflow:hidden; margin-top:3px; }
+  #sniffBar { height:100%; width:0; background:#ffb020; }
+  #obj { left:240px; bottom:30px; max-width:520px; font:600 18px "Segoe UI", sans-serif; color:#f5e27a; }
+  #obj::before { content:"▶ "; color:#f5c518; }
+  #prompt { left:50%; bottom:170px; transform:translateX(-50%); font:700 20px "Segoe UI", sans-serif; background:#000b; padding:6px 18px; border:2px solid #fff6; border-radius:8px; display:none; }
+  #prompt b { color:#f5c518; border:2px solid #f5c518; border-radius:5px; padding:0 7px; margin-right:6px; }
+  #sub { left:50%; bottom:90px; transform:translateX(-50%); width:min(760px,86vw); text-align:center; font:500 19px/1.35 "Segoe UI", sans-serif; opacity:0; transition:opacity .3s; }
+  #sub.on { opacity:1; }
+  #help { left:22px; top:14px; text-align:left; font:12px "Segoe UI", sans-serif; color:#cfd8e2; transition:opacity 1s; }
+  #vig { position:fixed; inset:0; pointer-events:none; transition:background .5s; }
+  #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; }
+  #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; display:flex; align-items:center; justify-content:center; font:700 40px Impact, sans-serif; color:#fff; transition:opacity .35s; z-index:15; }
+  #fade.on { opacity:1; }
+
+  .overlay { position:fixed; inset:0; display:none; z-index:20; }
+  .overlay.on { display:flex; }
+  #title { background:radial-gradient(circle at 50% 40%, #0008, #000d); flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  #title h1 { font:400 84px Impact, sans-serif; letter-spacing:6px; margin:0; text-shadow:0 0 18px #000; }
+  #title h1 span { color:var(--red); }
+  #title p { color:#cdd6df; max-width:620px; margin:8px 0 22px; text-shadow:0 0 6px #000; }
+  #title .ctl { font-size:13px; color:#aab5c0; margin-top:18px; line-height:1.8; }
+  button { font:inherit; color:inherit; background:#1b222a; border:1px solid var(--line); border-radius:8px; padding:10px 16px; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--red); background:#232b35; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  #btnStart { font:700 22px Impact, sans-serif; letter-spacing:3px; padding:14px 40px; background:#7a1010; border-color:var(--red); }
+  #dlg { background:#0006; align-items:center; justify-content:center; }
+  #dlgBox { width:min(640px,92vw); max-height:90vh; overflow:auto; background:#0e1217f2; border:1px solid var(--line); border-left:4px solid var(--red); border-radius:10px; padding:18px 20px; }
+  #dlgT { font:400 26px Impact, sans-serif; letter-spacing:2px; color:var(--red); margin-bottom:6px; }
+  #dlgX p { margin:6px 0; }
+  #dlgO { display:grid; gap:8px; margin-top:12px; }
+  #dlgO button { display:flex; gap:12px; text-align:left; align-items:flex-start; }
+  #dlgO .k { background:#fff1; border-radius:5px; padding:0 8px; font:700 14px "Courier New", monospace; color:var(--amber); }
+  #dlgO small { display:block; color:#8f9baa; font-size:12px; margin-top:2px; }
+
+  #mini { background:#000c; flex-direction:column; align-items:center; padding:30px 18px; z-index:25; text-align:center; }
+  #miniT { font:400 34px Impact, sans-serif; color:var(--red); letter-spacing:3px; margin-top:20px; }
+  #miniH { margin:8px 0 14px; min-height:44px; max-width:560px; }
+  #miniA { position:relative; flex:1; width:100%; max-width:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+  .big { width:200px; height:200px; border-radius:50%; font:700 20px Impact, sans-serif; letter-spacing:1px; background:#2a0f0f; border:3px solid var(--red); color:#fff; white-space:pre-line; touch-action:none; }
+  .big:active { background:#5a1a1a; }
+  .mbar { width:100%; height:14px; background:#111; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+  .mbar i { display:block; height:100%; width:0; background:var(--green); }
+  #dogArea { position:relative; width:220px; height:220px; display:flex; align-items:center; justify-content:center; }
+  .ring { width:200px; height:200px; border:4px solid var(--ar); border-radius:50%; animation:pulse 1s linear infinite; position:absolute; }
+  .ring.static { animation:none; opacity:.35; }
+  @keyframes pulse { from { transform:scale(.3); opacity:.3; } to { transform:scale(1); opacity:1; } }
+  #dogArea .tap { position:absolute; inset:0; border-radius:50%; background:transparent; border:0; }
+  #sweatArea { position:relative; width:100%; height:300px; border:1px dashed var(--line); border-radius:12px; }
+  .drop { position:absolute; width:52px; height:52px; margin:-26px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:#6ad0ff; border:0; box-shadow:0 0 12px #6ad0ff; padding:0; }
+
+  #end { background:#000d; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; }
+  #end h2 { font:400 76px Impact, sans-serif; letter-spacing:5px; margin:0 0 8px; }
+  #end.dead h2 { color:var(--red); } #end.win h2 { color:var(--green); }
+  #end.busted { animation:siren 1s infinite; }
+  @keyframes siren { 0%,100% { box-shadow:inset 0 0 160px #ff000066; } 50% { box-shadow:inset 0 0 160px #0050ff66; } }
+  #end p { max-width:640px; margin:6px auto; text-align:left; }
+</style>
+</head>
+<body class="nohud">
+<div id="game"></div>
+<div id="vig"></div>
+
+<div id="clock" class="hud">--:--</div>
+<div id="alert" class="hud"></div>
+<div id="stars" class="hud"></div>
+<div id="money" class="hud"></div>
+<div id="inv" class="hud"></div>
+<div id="life" class="hud"></div>
+<div id="stom" class="hud">SALUD<div class="bar"><i id="hpBar"></i></div><span style="display:block;margin-top:6px">CÁPSULAS <span id="stomLbl"></span></span><div class="bar"><i id="stomBar"></i></div></div>
+<div id="radarBox" class="hud"><canvas id="radar" width="190" height="190"></canvas></div>
+<div id="sniffBox" class="hud">🐕 OLFATO<div class="bar"><div id="sniffBar"></div></div></div>
+<div id="obj" class="hud"></div>
+<div id="prompt" class="hud"></div>
+<div id="sub" class="hud"></div>
+<div id="help" class="hud">WASD mover · SHIFT correr · ESPACIO saltar · C agacharse · Ratón (arrastrar) o ← → cámara<br>E interactuar · H esconderse en taquilla · Q pastilla · R spray · F11 pantalla completa<br>Recoge 💊 (+6 s de vida) y ⏱ (+5 s de misión) · los policías de negro disparan si huyes</div>
+<div id="flash"></div>
+<div id="fade"></div>
+
+<div id="title" class="overlay on">
+  <h1>SIMULA<span>-tor</span></h1>
+  <p>Eres una <b>mula</b>. Tienes <b>60 segundos</b> para abordar, pero tus cápsulas explotan en <b>45</b>. Recoge antiácidos 💊 y relojes ⏱ para ganar segundos. Esquiva policías (algunos van armados), perros y escáneres.</p>
+  <button id="btnStart">▶ NUEVA PARTIDA</button>
+  <div class="ctl">WASD: mover &nbsp;·&nbsp; SHIFT: correr (más sospechoso) &nbsp;·&nbsp; ESPACIO: saltar &nbsp;·&nbsp; C: agacharse (sigilo)<br>H: esconderse en taquillas &nbsp;·&nbsp; E: interactuar &nbsp;·&nbsp; Q: pastilla &nbsp;·&nbsp; R: spray &nbsp;·&nbsp; Ratón/← →: cámara &nbsp;·&nbsp; F11: pantalla completa<br>Los perros te huelen desde lejos y te persiguen. Si te alcanzan, ¡forcejea!</div>
+</div>
+
+<div id="dlg" class="overlay"><div id="dlgBox"><div id="dlgT"></div><div id="dlgX"></div><div id="dlgO"></div></div></div>
+<div id="mini" class="overlay"><div id="miniT"></div><div id="miniH"></div><div id="miniA"></div></div>
+<div id="end" class="overlay"></div>
+
+<script src="dist/game.js"></script>
+</body>
+</html>
